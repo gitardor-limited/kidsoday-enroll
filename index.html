@@ -1,0 +1,48 @@
+<div id="enroll-btn-container"></div>
+<div id="enroll-status" style="margin-top:12px; font-size:14px; color:#555;"></div>
+
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script>
+const CLIENT_ID = "656751987892-s5h4b3h7aq6rl63ut7pl6hgm3d2vr46p.apps.googleusercontent.com"; 
+const ENROLL_API_URL = "https://script.google.com/macros/s/AKfycbyeKrGPdEFxzq312Z4lnjYKjvhupSL2SkGos1LtzbSmO1YVWWFNpEHY29248uYN_-xHgA/exec";
+
+// ================= Google Sign-In Callback =================
+function onEnrollGoogle(response) {
+  const payload = JSON.parse(atob(response.credential.split(".")[1]));
+  const email = payload.email;
+  const firstName = payload.given_name || "";
+  const lastName = payload.family_name || "";
+
+  document.getElementById("enroll-status").textContent = "Checking enrollment...";
+
+  // Call your Apps Script to handle Leads/Database
+  fetch(`${ENROLL_API_URL}?email=${encodeURIComponent(email)}&firstName=${encodeURIComponent(firstName)}&lastName=${encodeURIComponent(lastName)}`)
+    .then(r => r.json())
+    .then(data => {
+      if (data.records && data.records.length > 0) {
+        // Email exists in Database → go to payment page
+        window.location.href = "https://www.kidsoday.com/payment-page"; // already your payment page
+      } else {
+        // Email does NOT exist → show the form page
+        window.location.href = "https://www.kidsoday.com/enroll-form"; // your enrollment form page
+      }
+    })
+    .catch(err => {
+      console.error("Enroll check failed:", err);
+      document.getElementById("enroll-status").textContent = "Failed to process enrollment. Please try again.";
+    });
+}
+
+// ================= Initialize GSI Button =================
+window.onload = () => {
+  google.accounts.id.initialize({
+    client_id: CLIENT_ID,
+    callback: onEnrollGoogle
+  });
+
+  google.accounts.id.renderButton(
+    document.getElementById("enroll-btn-container"),
+    { theme: "outline", size: "large", text: "Enroll" }
+  );
+};
+</script>
