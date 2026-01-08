@@ -1,80 +1,203 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"/>
-<title>Kids O'Day Enroll</title>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
-<script src="https://accounts.google.com/gsi/client" async defer></script>
-<style>
-:root{--accent:#1a73e8;--bg:#f7f9fc;--card:#ffffff;--border:#e6e9ef;--muted:#666;}
-body{margin:0;font-family:Inter,Arial,sans-serif;background:var(--bg);color:#222;}
-.wrap{max-width:960px;margin:24px auto;padding:16px;}
-.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;box-shadow:0 6px 20px rgba(0,0,0,.04);}
-h1{margin:0;font-size:22px;color:var(--accent);}
-#status{color:var(--muted);font-size:13px;margin:12px 0 20px;}
-#courses{display:none;margin-top:16px;}
-.course-btn{display:block;margin-bottom:12px;background:var(--accent);color:#fff;padding:10px 16px;border-radius:8px;font-weight:700;text-decoration:none;text-align:center;}
-#login{margin-top:16px;}
-#logout{margin-top:20px;font-size:13px;}
-#logout a{color:#555;text-decoration:none;}
-</style>
+  <meta charset="UTF-8" />
+  <title>Kids O'Day – Enroll</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+  <style>
+    body {
+      margin:0;
+      font-family: Inter, Arial, sans-serif;
+      background:#f7f9fc;
+      color:#222;
+    }
+    .wrap {
+      max-width:900px;
+      margin:30px auto;
+      padding:16px;
+    }
+    .card {
+      background:#fff;
+      border:1px solid #e6e9ef;
+      border-radius:14px;
+      padding:24px;
+    }
+    h1 { margin:0 0 10px; }
+    #status { font-size:14px; color:#666; margin-bottom:20px; }
+
+    .course {
+      border:1px solid #e6e9ef;
+      border-radius:12px;
+      padding:16px;
+      margin-bottom:12px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+    }
+
+    .course.disabled {
+      opacity:.6;
+      background:#f4f6fa;
+    }
+
+    .btn {
+      background:#1a73e8;
+      color:#fff;
+      padding:10px 16px;
+      border-radius:8px;
+      font-weight:700;
+      text-decoration:none;
+      border:none;
+      cursor:pointer;
+    }
+
+    .btn.disabled {
+      background:#aaa;
+      cursor:not-allowed;
+    }
+
+    #login { margin-top:20px; }
+    #logout { margin-top:20px; font-size:13px; }
+    #logout a { color:#555; text-decoration:none; }
+  </style>
 </head>
+
 <body>
 <div class="wrap">
   <div class="card">
-    <h1>Enroll in a Course</h1>
+    <h1>Enroll in a Class</h1>
     <div id="status">Checking session…</div>
+
     <div id="login"></div>
-    <div id="courses"></div>
-    <div id="logout" style="display:none;"><a href="#" onclick="signOut();return false;">Sign out</a></div>
+    <div id="content" style="display:none;"></div>
+
+    <div id="logout" style="display:none;">
+      <a href="#" onclick="signOut();return false;">Sign out</a>
+    </div>
   </div>
 </div>
 
 <script>
-const CLIENT_ID="656751987892-s5h4b3h7aq6rl63ut7pl6hgm3d2vr46p.apps.googleusercontent.com";
-const API_URL="https://script.google.com/macros/s/AKfycbyeKrGPdEFxzq312Z4lnjYKjvhupSL2SkGos1LtzbSmO1YVWWFNpEHY29248uYN_-xHgA/exec";
-const COURSES=["LEVEL-01","LEVEL-02","LEVEL-03","LEVEL-04","LEVEL-05","LEVEL-06","LEVEL-07","LEVEL-08","LEVEL-09","LEVEL-10","LEVEL-11","LEVEL-12"];
+/* ================= CONFIG ================= */
+const CLIENT_ID =
+  "656751987892-s5h4b3h7aq6rl63ut7pl6hgm3d2vr46p.apps.googleusercontent.com";
 
-const el=id=>document.getElementById(id);
-const esc=s=>(s||"").toString().replace(/[&<>]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[m]));
+const API_URL =
+  "https://script.google.com/macros/s/AKfycbyeKrGPdEFxzq312Z4lnjYKjvhupSL2SkGos1LtzbSmO1YVWWFNpEHY29248uYN_-xHgA/exec";
 
-function saveSession(email){localStorage.setItem("kidsoday_email",email);localStorage.setItem("kidsoday_until",Date.now()+30*86400000);}
-function getSession(){const e=localStorage.getItem("kidsoday_email");const u=localStorage.getItem("kidsoday_until");if(e&&u&&Date.now()<+u)return e;return null;}
-function signOut(){localStorage.clear();location.reload();}
+const SESSION_DAYS = 30;
 
-function renderCourses(data){
-  const coursesDiv=el("courses");coursesDiv.innerHTML="";coursesDiv.style.display="block";
-  const enrolled=data.records.map(r=>r["Course Code"]);
-  COURSES.forEach(code=>{
-    const btn=document.createElement("a");
-    btn.className="course-btn";
-    btn.href=enrolled.includes(code)?"#":"https://www.kidsoday.com/payment-page?course="+encodeURIComponent(code);
-    btn.textContent=code+(enrolled.includes(code)?" (Already Enrolled)":"");
-    coursesDiv.appendChild(btn);
+const COURSES = [
+  "LEVEL-01","LEVEL-02","LEVEL-03","LEVEL-04",
+  "LEVEL-05","LEVEL-06","LEVEL-07","LEVEL-08",
+  "LEVEL-09","LEVEL-10","LEVEL-11","LEVEL-12"
+];
+
+/* ================= HELPERS ================= */
+const el = id => document.getElementById(id);
+
+/* ================= SESSION ================= */
+function saveSession(email){
+  localStorage.setItem("kidsoday_email", email);
+  localStorage.setItem("kidsoday_until",
+    Date.now() + SESSION_DAYS * 86400000);
+}
+function getSession(){
+  const e = localStorage.getItem("kidsoday_email");
+  const u = localStorage.getItem("kidsoday_until");
+  if (e && u && Date.now() < +u) return e;
+  return null;
+}
+function signOut(){
+  localStorage.clear();
+  location.reload();
+}
+
+/* ================= RENDER COURSES ================= */
+function renderCourses(enrolledCodes){
+  const c = el("content");
+  let html = "";
+
+  COURSES.forEach(code => {
+    const enrolled = enrolledCodes.includes(code);
+    html += `
+      <div class="course ${enrolled ? "disabled" : ""}">
+        <div>
+          <strong>${code}</strong><br>
+          ${enrolled ? "Already Enrolled" : "Available"}
+        </div>
+        ${
+          enrolled
+          ? `<button class="btn disabled">Enrolled</button>`
+          : `<button class="btn" onclick="pay('${code}')">Enroll</button>`
+        }
+      </div>
+    `;
   });
-  el("logout").style.display="block";el("status").textContent="Select a course to enroll";
+
+  c.innerHTML = html;
+  c.style.display = "block";
+  el("logout").style.display = "block";
+  el("status").textContent = "Select a course";
 }
 
-function load(email){
-  fetch(API_URL+"?credential="+encodeURIComponent(localStorage.getItem("kidsoday_credential")))
-    .then(r=>r.json())
-    .then(data=>{renderCourses(data);})
-    .catch(err=>{console.error(err);el("status").textContent="Failed to load enrollment info";});
+/* ================= PAYMENT ================= */
+function pay(courseCode){
+  window.location.href =
+    "https://www.kidsoday.com/payment?course=" +
+    encodeURIComponent(courseCode);
 }
 
+/* ================= LOAD ================= */
+function load(email, firstName="", lastName=""){
+  fetch(
+    API_URL +
+    "?email=" + encodeURIComponent(email) +
+    "&firstName=" + encodeURIComponent(firstName) +
+    "&lastName=" + encodeURIComponent(lastName)
+  )
+  .then(r => r.json())
+  .then(data => {
+    const enrolled = (data.records || [])
+      .map(r => r["Course Code"])
+      .filter(Boolean);
+
+    renderCourses(enrolled);
+  })
+  .catch(() => {
+    el("status").textContent = "Failed to load enrollment";
+  });
+}
+
+/* ================= GOOGLE ================= */
 function onGoogle(res){
-  localStorage.setItem("kidsoday_credential",res.credential);
-  const payload=JSON.parse(atob(res.credential.split(".")[1]));
+  const payload = JSON.parse(atob(res.credential.split(".")[1]));
   saveSession(payload.email);
-  el("login").style.display="none";
-  load(payload.email);
+  el("login").style.display = "none";
+  load(payload.email, payload.given_name||"", payload.family_name||"");
 }
 
-window.onload=()=>{
-  const s=getSession();
-  google.accounts.id.initialize({client_id:CLIENT_ID,callback:onGoogle});
-  if(s){el("login").style.display="none";load(s);}
-  else{el("status").textContent="Please sign in to continue";google.accounts.id.renderButton(el("login"),{theme:"outline",size:"large"});}
+window.onload = () => {
+  const s = getSession();
+
+  google.accounts.id.initialize({
+    client_id: CLIENT_ID,
+    callback: onGoogle
+  });
+
+  if (s) {
+    el("login").style.display = "none";
+    load(s);
+  } else {
+    el("status").textContent = "Sign in to enroll";
+    google.accounts.id.renderButton(el("login"), {
+      theme:"outline",
+      size:"large"
+    });
+  }
 };
 </script>
 </body>
