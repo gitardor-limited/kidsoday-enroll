@@ -16,71 +16,19 @@
   --muted:#666;
 }
 
-body {
-  margin:0;
-  font-family:Arial, sans-serif;
-  background:var(--bg);
-}
-
-.container {
-  max-width:900px;
-  margin:30px auto;
-  padding:20px;
-  background:var(--card);
-  border-radius:14px;
-  border:1px solid var(--border);
-  box-shadow:0 6px 20px rgba(0,0,0,.05);
-}
-
+body { margin:0; font-family:Arial, sans-serif; background:var(--bg); }
+.container { max-width:900px; margin:30px auto; padding:20px; background:var(--card); border-radius:14px; border:1px solid var(--border); box-shadow:0 6px 20px rgba(0,0,0,.05); }
 h1 { color:var(--accent); }
-
-#status {
-  font-size:14px;
-  color:var(--muted);
-  margin-bottom:20px;
-}
-
-.levels {
-  display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
-  gap:16px;
-}
-
-.level {
-  border:1px solid var(--border);
-  border-radius:12px;
-  padding:16px;
-  text-align:center;
-  background:#fff;
-}
-
-.level.enrolled {
-  background:#f1f3f4;
-  opacity:.65;
-}
-
-.pay-link, .disabled-btn {
-  display:inline-block;
-  margin-top:12px;
-  padding:10px 16px;
-  border-radius:8px;
-  font-weight:bold;
-  text-decoration:none;
-}
-
-.pay-link {
-  background:var(--accent);
-  color:#fff;
-}
-
+#status { font-size:14px; color:var(--muted); margin-bottom:20px; }
+.levels { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px; }
+.level { border:1px solid var(--border); border-radius:12px; padding:16px; text-align:center; background:#fff; }
+.level.enrolled { background:#f1f3f4; opacity:.65; }
+.pay-link, .disabled-btn, button { display:inline-block; margin-top:12px; padding:10px 16px; border-radius:8px; font-weight:bold; text-decoration:none; }
+.pay-link { background:var(--accent); color:#fff; }
 .pay-link:hover { opacity:.9; }
-
-.disabled-btn {
-  background:#aaa;
-  color:#fff;
-  cursor:not-allowed;
-}
-
+.disabled-btn { background:#aaa; color:#fff; cursor:not-allowed; }
+form input, form select { display:block; width:100%; margin:6px 0 12px 0; padding:8px; border-radius:6px; border:1px solid #ccc; }
+form button { background:var(--accent); color:#fff; border:none; cursor:pointer; }
 #login { margin-top:20px; }
 #logout { margin-top:30px; font-size:13px; }
 #logout a { color:#555; text-decoration:none; }
@@ -93,6 +41,8 @@ h1 { color:var(--accent); }
   <div id="status">Checking session…</div>
 
   <div id="login"></div>
+
+  <div id="form-container" style="display:none;"></div>
   <div id="levels" style="display:none;"></div>
 
   <div id="logout" style="display:none;">
@@ -101,62 +51,79 @@ h1 { color:var(--accent); }
 </div>
 
 <script>
-/* ================= CONFIG ================= */
-const CLIENT_ID =
-  "656751987892-s5h4b3h7aq6rl63ut7pl6hgm3d2vr46p.apps.googleusercontent.com";
-
-const API_URL =
-  "https://script.google.com/macros/s/AKfycbyeKrGPdEFxzq312Z4lnjYKjvhupSL2SkGos1LtzbSmO1YVWWFNpEHY29248uYN_-xHgA/exec";
-
+const CLIENT_ID = "656751987892-s5h4b3h7aq6rl63ut7pl6hgm3d2vr46p.apps.googleusercontent.com";
+const API_URL = "https://script.google.com/macros/s/AKfycbyeKrGPdEFxzq312Z4lnjYKjvhupSL2SkGos1LtzbSmO1YVWWFNpEHY29248uYN_-xHgA/exec";
 const SESSION_DAYS = 30;
+const ALL_LEVELS = ["LEVEL-01","LEVEL-02","LEVEL-03","LEVEL-04","LEVEL-05","LEVEL-06","LEVEL-07","LEVEL-08","LEVEL-09","LEVEL-10","LEVEL-11","LEVEL-12"];
 
-const ALL_LEVELS = [
-  "LEVEL-01","LEVEL-02","LEVEL-03","LEVEL-04",
-  "LEVEL-05","LEVEL-06","LEVEL-07","LEVEL-08",
-  "LEVEL-09","LEVEL-10","LEVEL-11","LEVEL-12"
-];
+function saveSession(email){ localStorage.setItem("kidsoday_email", email); localStorage.setItem("kidsoday_until", Date.now() + SESSION_DAYS*86400000); }
+function getSession(){ const e = localStorage.getItem("kidsoday_email"); const u = localStorage.getItem("kidsoday_until"); if(e && u && Date.now()<+u) return e; return null; }
+function signOut(){ localStorage.clear(); location.reload(); }
 
-/* ================= SESSION ================= */
-function saveSession(email){
-  localStorage.setItem("kidsoday_email", email);
-  localStorage.setItem(
-    "kidsoday_until",
-    Date.now() + SESSION_DAYS * 86400000
-  );
-}
-
-function getSession(){
-  const e = localStorage.getItem("kidsoday_email");
-  const u = localStorage.getItem("kidsoday_until");
-  if (e && u && Date.now() < +u) return e;
-  return null;
-}
-
-function signOut(){
-  localStorage.clear();
-  location.reload();
-}
-
-/* ================= LOAD ENROLLMENT ================= */
+/* ================= LOAD ENROLLMENT / FORM ================= */
 function loadEnroll(email){
   fetch(API_URL + "?email=" + encodeURIComponent(email))
     .then(r => r.json())
     .then(data => {
-      if (data.error) throw data.error;
+      if(data.error) throw data.error;
 
-      const enrolled = new Set(
-        (data.records || []).map(r => r["Course Code"])
-      );
-
-      renderLevels(enrolled);
-      document.getElementById("status").textContent =
-        "Select a level to continue";
+      // If user not in Database → show form
+      if(!data.inDatabase){
+        renderForm(email);
+        document.getElementById("status").textContent = "Please fill the enrollment form first";
+      } else {
+        const enrolled = new Set((data.records||[]).map(r=>r["Course Code"]));
+        renderLevels(enrolled);
+        document.getElementById("status").textContent = "Select a level to continue";
+      }
     })
-    .catch(err => {
-      console.error(err);
-      document.getElementById("status").textContent =
-        "Failed to load enrollment info";
-    });
+    .catch(err => { console.error(err); document.getElementById("status").textContent = "Failed to load enrollment info"; });
+}
+
+/* ================= FORM RENDER ================= */
+function renderForm(email){
+  const container = document.getElementById("form-container");
+  container.style.display="block";
+  container.innerHTML = `
+    <form id="enroll-form">
+      <input type="text" name="Student ID" placeholder="Student ID" required />
+      <select name="Prefix" required>
+        <option value="">Prefix</option>
+        <option value="Mr.">Mr.</option>
+        <option value="Ms.">Ms.</option>
+      </select>
+      <input type="text" name="First Name" placeholder="First Name" required />
+      <input type="text" name="Last Name" placeholder="Last Name" required />
+      <input type="email" name="Email" value="${email}" readonly />
+      <input type="text" name="WhatsApp Number" placeholder="WhatsApp Number" required />
+      <input type="text" name="Country of Residence" placeholder="Country of Residence" required />
+      <input type="text" name="Relation to Child" placeholder="Relation to Child" required />
+      <button type="submit">Submit Enrollment</button>
+    </form>
+  `;
+
+  const form = document.getElementById("enroll-form");
+  form.onsubmit = (e) => {
+    e.preventDefault();
+    const data = {};
+    new FormData(form).forEach((v,k)=>data[k]=v);
+
+    fetch(API_URL, {
+      method:"POST",
+      body:JSON.stringify(data),
+    })
+    .then(r=>r.json())
+    .then(res=>{
+      if(res.success){
+        container.style.display="none";
+        document.getElementById("status").textContent="Form submitted! Now select a level.";
+        renderLevels(new Set());
+      } else {
+        alert("Error: "+res.error);
+      }
+    })
+    .catch(err=>{console.error(err); alert("Submission failed");});
+  }
 }
 
 /* ================= RENDER LEVELS ================= */
@@ -165,58 +132,39 @@ function renderLevels(enrolled){
   wrap.innerHTML = `<div class="levels"></div>`;
   const grid = wrap.firstChild;
 
-  ALL_LEVELS.forEach(code => {
+  ALL_LEVELS.forEach(code=>{
     const isEnrolled = enrolled.has(code);
-
     const div = document.createElement("div");
-    div.className = "level" + (isEnrolled ? " enrolled" : "");
-
+    div.className="level"+(isEnrolled?" enrolled":"");
     div.innerHTML = `
       <h3>${code}</h3>
-      ${
-        isEnrolled
-          ? `<span class="disabled-btn">Already Enrolled</span>`
-          : `<a
-               class="pay-link"
-               href="https://www.kidsoday.com/payment-page?course=${code}"
-               target="_blank"
-             >Proceed to Payment</a>`
-      }
+      ${isEnrolled
+        ? `<span class="disabled-btn">Already Enrolled</span>`
+        : `<a class="pay-link" href="https://www.kidsoday.com/payment-page?course=${code}" target="_blank">Proceed to Payment</a>`}
     `;
-
     grid.appendChild(div);
   });
 
-  wrap.style.display = "block";
-  document.getElementById("logout").style.display = "block";
+  wrap.style.display="block";
+  document.getElementById("logout").style.display="block";
 }
 
 /* ================= GOOGLE SIGN-IN ================= */
 function onGoogle(res){
   const payload = JSON.parse(atob(res.credential.split(".")[1]));
   saveSession(payload.email);
-  document.getElementById("login").style.display = "none";
+  document.getElementById("login").style.display="none";
   loadEnroll(payload.email);
 }
 
-window.onload = () => {
+window.onload = ()=>{
   const s = getSession();
+  google.accounts.id.initialize({ client_id: CLIENT_ID, callback: onGoogle });
 
-  google.accounts.id.initialize({
-    client_id: CLIENT_ID,
-    callback: onGoogle
-  });
-
-  if (s) {
-    document.getElementById("login").style.display = "none";
-    loadEnroll(s);
-  } else {
-    document.getElementById("status").textContent =
-      "Sign in to enroll";
-    google.accounts.id.renderButton(
-      document.getElementById("login"),
-      { theme:"outline", size:"large" }
-    );
+  if(s){ document.getElementById("login").style.display="none"; loadEnroll(s); }
+  else {
+    document.getElementById("status").textContent="Sign in to enroll";
+    google.accounts.id.renderButton(document.getElementById("login"), { theme:"outline", size:"large" });
   }
 };
 </script>
