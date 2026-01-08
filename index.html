@@ -157,16 +157,39 @@
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script>
 /* ================= CONFIG ================= */
-const CLIENT_ID = "656751987892-s5h4b3h7aq6rl63ut7pl6hgm3d2vr46p.apps.googleusercontent.com"; 
-const ENROLL_API_URL = "https://script.google.com/macros/s/AKfycbyeKrGPdEFxzq312Z4lnjYKjvhupSL2SkGos1LtzbSmO1YVWWFNpEHY29248uYN_-xHgA/exec";
+const CLIENT_ID =
+  "656751987892-s5h4b3h7aq6rl63ut7pl6hgm3d2vr46p.apps.googleusercontent.com";
 
-/* ================= GET COURSE CODE ================= */
-const params = new URLSearchParams(window.location.search);
-const courseCode = params.get("course"); // LEVEL-01, LEVEL-02, etc
+const API_URL =
+  "https://script.google.com/macros/s/AKfycbyeKrGPdEFxzq312Z4lnjYKjvhupSL2SkGos1LtzbSmO1YVWWFNpEHY29248uYN_-xHgA/exec";
 
-if (!courseCode) {
-  document.getElementById("enroll-status").textContent =
-    "Invalid enrollment link. No course selected.";
+const SESSION_DAYS = 30;
+
+/* ================= HELPERS ================= */
+const el = id => document.getElementById(id);
+const esc = s => (s||"").toString().replace(/[&<>]/g,m=>(
+  { "&":"&amp;","<":"&lt;",">":"&gt;" }[m]
+));
+
+/* ================= SESSION ================= */
+function saveSession(email){
+  localStorage.setItem("kidsoday_email", email);
+  localStorage.setItem(
+    "kidsoday_until",
+    Date.now() + SESSION_DAYS * 86400000
+  );
+}
+
+function getSession(){
+  const e = localStorage.getItem("kidsoday_email");
+  const u = localStorage.getItem("kidsoday_until");
+  if (e && u && Date.now() < +u) return e;
+  return null;
+}
+
+function signOut(){
+  localStorage.clear();
+  location.reload();
 }
 
 /* ================= GOOGLE SIGN-IN CALLBACK ================= */
