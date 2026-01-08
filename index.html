@@ -192,58 +192,38 @@ function signOut(){
   location.reload();
 }
 
-/* ================= GOOGLE SIGN-IN CALLBACK ================= */
-function onEnrollGoogle(response) {
-  const payload = JSON.parse(atob(response.credential.split(".")[1]));
+/* ================= GOOGLE SIGN-IN ================= */
+function onGoogle(res){
+  const payload = JSON.parse(atob(res.credential.split(".")[1]));
 
-  const email = payload.email;
-  const firstName = payload.given_name || "";
-  const lastName = payload.family_name || "";
+  saveSession(payload.email);
+  el("login").style.display = "none";
 
-  document.getElementById("enroll-status").textContent =
-    `Checking enrollment for ${courseCode}...`;
-
-  fetch(
-    `${ENROLL_API_URL}` +
-    `?email=${encodeURIComponent(email)}` +
-    `&firstName=${encodeURIComponent(firstName)}` +
-    `&lastName=${encodeURIComponent(lastName)}` +
-    `&course=${encodeURIComponent(courseCode)}`
-  )
-    .then(r => r.json())
-    .then(data => {
-      if (data.records && data.records.length > 0) {
-        // Already in Database → go to payment
-        window.location.href =
-          `https://www.kidsoday.com/payment-page?course=${encodeURIComponent(courseCode)}`;
-      } else {
-        // New lead → go to enrollment form
-        window.location.href =
-          `https://www.kidsoday.com/enroll-form?course=${encodeURIComponent(courseCode)}`;
-      }
-    })
-    .catch(err => {
-      console.error("Enroll check failed:", err);
-      document.getElementById("enroll-status").textContent =
-        "Failed to process enrollment. Please try again.";
-    });
+  load(
+    payload.email,
+    payload.given_name || "",
+    payload.family_name || ""
+  );
 }
 
-/* ================= INIT BUTTON ================= */
 window.onload = () => {
+  const s = getSession();
+
   google.accounts.id.initialize({
     client_id: CLIENT_ID,
-    callback: onEnrollGoogle
+    callback: onGoogle
   });
 
-  google.accounts.id.renderButton(
-    document.getElementById("enroll-btn-container"),
-    {
+  if (s) {
+    el("login").style.display = "none";
+    load(s);
+  } else {
+    el("status").textContent = "Please sign in to continue";
+    google.accounts.id.renderButton(el("login"), {
       theme: "outline",
-      size: "large",
-      text: "Enroll"
-    }
-  );
+      size: "large"
+    });
+  }
 };
 </script>
 </body>
