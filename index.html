@@ -1,159 +1,77 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Kids O'Day Enrollment</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
-
-  <style>
-    :root { --accent:#1a73e8; --bg:#f7f9fc; --card:#fff; --border:#e6e9ef; --muted:#666; }
-    body { margin:0; font-family:Inter, Arial, sans-serif; background:var(--bg); color:#222; }
-    .wrap { max-width:960px; margin:24px auto; padding:16px; }
-    .card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:20px; box-shadow:0 6px 20px rgba(0,0,0,.04); }
-    h1 { margin:0; font-size:22px; color:var(--accent); }
-    #status { color:var(--muted); font-size:13px; margin:12px 0 20px; }
-    #login { margin-top:16px; }
-    #logout { margin-top:20px; font-size:13px; }
-    #logout a { color:#555; text-decoration:none; }
-    .btn { display:inline-block; margin-top:12px; background:var(--accent); color:#fff; padding:10px 16px; border-radius:8px; font-weight:700; text-decoration:none; }
-  </style>
+<meta charset="UTF-8" />
+<title>Kids O'Day Enroll</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+:root{--accent:#1a73e8;--bg:#f7f9fc;--card:#fff;--border:#e6e9ef;--muted:#666;}
+body{margin:0;font-family:Inter,Arial,sans-serif;background:var(--bg);color:#222;}
+.wrap{max-width:960px;margin:24px auto;padding:16px;}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;box-shadow:0 6px 20px rgba(0,0,0,.04);}
+h1{margin:0;font-size:22px;color:var(--accent);}
+#status{color:var(--muted);font-size:13px;margin:12px 0 20px;}
+.course-btn{display:inline-block;margin:6px; padding:10px 16px;border-radius:8px;background:var(--accent);color:#fff;font-weight:700;text-decoration:none;}
+.course-btn.disabled{background:#aaa; cursor:not-allowed;}
+#login{margin-top:16px;}
+</style>
 </head>
-
 <body>
 <div class="wrap">
-  <div class="card">
-    <h1>Enroll in a Kids O'Day Course</h1>
-    <div id="status">Checking session…</div>
-    <div id="login"></div>
-    <div id="content" style="display:none;"></div>
-    <div id="logout" style="display:none;">
-      <a href="#" onclick="signOut();return false;">Sign out</a>
-    </div>
-  </div>
+<div class="card">
+<h1>Select a Course</h1>
+<div id="status">Checking session…</div>
+<div id="login"></div>
+<div id="content" style="display:none;"></div>
+</div>
 </div>
 
 <script>
-const CLIENT_ID = "656751987892-s5h4b3h7aq6rl63ut7pl6hgm3d2vr46p.apps.googleusercontent.com";
-const API_URL = "https://script.google.com/macros/s/AKfycbyeKrGPdEFxzq312Z4lnjYKjvhupSL2SkGos1LtzbSmO1YVWWFNpEHY29248uYN_-xHgA/exec";
-const SESSION_DAYS = 30;
+const CLIENT_ID="656751987892-s5h4b3h7aq6rl63ut7pl6hgm3d2vr46p.apps.googleusercontent.com";
+const API_URL="https://script.google.com/macros/s/AKfycbyeKrGPdEFxzq312Z4lnjYKjvhupSL2SkGos1LtzbSmO1YVWWFNpEHY29248uYN_-xHgA/exec";
+const COURSES=["LEVEL-01","LEVEL-02","LEVEL-03","LEVEL-04","LEVEL-05","LEVEL-06","LEVEL-07","LEVEL-08","LEVEL-09","LEVEL-10","LEVEL-11","LEVEL-12"];
+const PAYMENT_BASE="https://www.kidsoday.com/payment?course=";
 
-const el = id => document.getElementById(id);
+const el=id=>document.getElementById(id);
+const esc=s=>(s||"").toString().replace(/[&<>]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[m]));
 
-function saveSession(email){
-  localStorage.setItem("kidsoday_email", email);
-  localStorage.setItem("kidsoday_until", Date.now() + SESSION_DAYS*86400000);
-}
+function saveSession(cred){ localStorage.setItem("kidsoday_cred",cred); localStorage.setItem("kidsoday_until",Date.now()+30*86400000);}
+function getSession(){ const c=localStorage.getItem("kidsoday_cred"); const u=localStorage.getItem("kidsoday_until"); if(c && u && Date.now()<+u) return c; return null;}
+function signOut(){ localStorage.clear(); location.reload();}
 
-function getSession(){
-  const e = localStorage.getItem("kidsoday_email");
-  const u = localStorage.getItem("kidsoday_until");
-  if(e && u && Date.now() < +u) return e;
-  return null;
-}
-
-function signOut(){ localStorage.clear(); location.reload(); }
-
-/* ===== Load enrollment data ===== */
-function load(email, firstName="", lastName="") {
-  el("status").textContent = "Checking your enrollment...";
-  
-  fetch(API_URL + "?email=" + encodeURIComponent(email))
-    .then(r => r.json())
-    .then(data => {
-      el("content").style.display = "block";
-      if(data.records && data.records.length > 0){
-        // Already in Database → skip form, show courses status
-        el("status").textContent = "You are already enrolled. Select a new course below.";
-        showCourses(data.records);
-      } else {
-        // Not enrolled yet → show form
-        el("status").textContent = "Please fill in your details to enroll.";
-        showForm(firstName, lastName, email);
-      }
-      el("logout").style.display = "block";
-    })
-    .catch(err => {
-      console.error(err);
-      el("status").textContent = "Failed to load enrollment. Try again.";
-    });
-}
-
-/* ===== Enrollment form ===== */
-function showForm(firstName, lastName, email){
-  const html = `
-    <form id="enroll-form">
-      <label>First Name:<br><input name="firstName" value="${firstName}" required></label><br>
-      <label>Last Name:<br><input name="lastName" value="${lastName}" required></label><br>
-      <label>Email:<br><input name="email" value="${email}" readonly required></label><br>
-      <label>Student ID:<br><input name="studentId" required></label><br>
-      <label>Course:<br>
-        <select name="course" required>
-          <option value="">Select</option>
-          <option value="LEVEL-01">LEVEL-01</option>
-          <option value="LEVEL-02">LEVEL-02</option>
-          <option value="LEVEL-03">LEVEL-03</option>
-          <option value="LEVEL-04">LEVEL-04</option>
-          <option value="LEVEL-05">LEVEL-05</option>
-          <option value="LEVEL-06">LEVEL-06</option>
-          <option value="LEVEL-07">LEVEL-07</option>
-          <option value="LEVEL-08">LEVEL-08</option>
-          <option value="LEVEL-09">LEVEL-09</option>
-          <option value="LEVEL-10">LEVEL-10</option>
-          <option value="LEVEL-11">LEVEL-11</option>
-          <option value="LEVEL-12">LEVEL-12</option>
-        </select>
-      </label><br>
-      <button class="btn" type="submit">Enroll</button>
-    </form>
-    <div id="enroll-msg" style="margin-top:12px; color:#555;"></div>
-  `;
-  el("content").innerHTML = html;
-
-  document.getElementById("enroll-form").onsubmit = e => {
-    e.preventDefault();
-    const formData = new FormData(e.target);
-    const params = new URLSearchParams();
-    for(const [k,v] of formData.entries()) params.append(k,v);
-    
-    fetch(API_URL + "?" + params.toString())
-      .then(r=>r.json())
-      .then(resp=>{
-        el("enroll-msg").textContent = "Enrollment successful! Proceed to payment.";
-      })
-      .catch(err=>{
-        console.error(err);
-        el("enroll-msg").textContent = "Enrollment failed. Try again.";
-      });
-  };
-}
-
-/* ===== Show already enrolled courses ===== */
-function showCourses(records){
-  let html = "<ul>";
-  records.forEach(r=>{
-    html += `<li>${r["Course Code"]} - ${r["Course Title"] || "Course"}</li>`;
+function renderCourses(data){
+  el("status").textContent="Select a course to enroll";
+  let html="";
+  COURSES.forEach(code=>{
+    let enrolled=false;
+    if(data.records && data.records.length>0){
+      enrolled=data.records.some(r=>r["Course Code"]===code);
+    }
+    html+=`<a class="course-btn ${enrolled?"disabled":""}" href="${enrolled?"#":PAYMENT_BASE+encodeURIComponent(code)}">${code} ${enrolled?"(Already Enrolled)":""}</a>`;
   });
-  html += "</ul>";
-  el("content").innerHTML = html;
+  el("content").innerHTML=html;
+  el("content").style.display="block";
 }
 
-/* ===== Google Sign-In ===== */
+function load(cred){
+  fetch(API_URL+"?credential="+encodeURIComponent(cred))
+  .then(r=>r.json())
+  .then(data=>renderCourses(data))
+  .catch(err=>{ console.error(err); el("status").textContent="Failed to load enrollment info"; });
+}
+
 function onGoogle(res){
-  const payload = JSON.parse(atob(res.credential.split(".")[1]));
-  saveSession(payload.email);
-  el("login").style.display = "none";
-  load(payload.email, payload.given_name||"", payload.family_name||"");
+  saveSession(res.credential);
+  el("login").style.display="none";
+  load(res.credential);
 }
 
-window.onload = () => {
-  const s = getSession();
+window.onload=()=>{
+  const s=getSession();
   google.accounts.id.initialize({ client_id: CLIENT_ID, callback: onGoogle });
-  if(s){ el("login").style.display="none"; load(s); }
-  else{
-    el("status").textContent="Please sign in to continue";
-    google.accounts.id.renderButton(el("login"), { theme:"outline", size:"large" });
-  }
+  if(s){ el("login").style.display="none"; load(s); } 
+  else{ el("status").textContent="Please sign in to continue"; google.accounts.id.renderButton(el("login"), {theme:"outline",size:"large"});}
 };
 </script>
 </body>
