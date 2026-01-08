@@ -8,58 +8,82 @@
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 
 <style>
-body {
-  font-family: Arial, sans-serif;
-  background:#f7f9fc;
-  margin:0;
+:root {
+  --accent:#1a73e8;
+  --bg:#f7f9fc;
+  --card:#ffffff;
+  --border:#e6e9ef;
+  --muted:#666;
 }
+
+body {
+  margin:0;
+  font-family:Arial, sans-serif;
+  background:var(--bg);
+}
+
 .container {
   max-width:900px;
   margin:30px auto;
   padding:20px;
-  background:#fff;
-  border-radius:12px;
+  background:var(--card);
+  border-radius:14px;
+  border:1px solid var(--border);
   box-shadow:0 6px 20px rgba(0,0,0,.05);
 }
-h1 { color:#1a73e8; }
-#status { font-size:14px; color:#666; margin-bottom:20px; }
+
+h1 { color:var(--accent); }
+
+#status {
+  font-size:14px;
+  color:var(--muted);
+  margin-bottom:20px;
+}
 
 .levels {
   display:grid;
   grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
-  gap:14px;
+  gap:16px;
 }
 
 .level {
-  border:1px solid #ddd;
+  border:1px solid var(--border);
+  border-radius:12px;
   padding:16px;
-  border-radius:10px;
   text-align:center;
+  background:#fff;
 }
 
 .level.enrolled {
   background:#f1f3f4;
-  opacity:.6;
+  opacity:.65;
 }
 
-.level button {
-  margin-top:10px;
-  padding:8px 14px;
-  border:none;
-  border-radius:6px;
+.pay-link, .disabled-btn {
+  display:inline-block;
+  margin-top:12px;
+  padding:10px 16px;
+  border-radius:8px;
   font-weight:bold;
-  cursor:pointer;
-  background:#1a73e8;
+  text-decoration:none;
+}
+
+.pay-link {
+  background:var(--accent);
   color:#fff;
 }
 
-.level.enrolled button {
-  background:#999;
+.pay-link:hover { opacity:.9; }
+
+.disabled-btn {
+  background:#aaa;
+  color:#fff;
   cursor:not-allowed;
 }
 
 #login { margin-top:20px; }
 #logout { margin-top:30px; font-size:13px; }
+#logout a { color:#555; text-decoration:none; }
 </style>
 </head>
 
@@ -78,8 +102,12 @@ h1 { color:#1a73e8; }
 
 <script>
 /* ================= CONFIG ================= */
-const CLIENT_ID = "656751987892-s5h4b3h7aq6rl63ut7pl6hgm3d2vr46p.apps.googleusercontent.com";
-const API_URL = "https://script.google.com/macros/s/AKfycbyeKrGPdEFxzq312Z4lnjYKjvhupSL2SkGos1LtzbSmO1YVWWFNpEHY29248uYN_-xHgA/exec";
+const CLIENT_ID =
+  "656751987892-s5h4b3h7aq6rl63ut7pl6hgm3d2vr46p.apps.googleusercontent.com";
+
+const API_URL =
+  "https://script.google.com/macros/s/AKfycbyeKrGPdEFxzq312Z4lnjYKjvhupSL2SkGos1LtzbSmO1YVWWFNpEHY29248uYN_-xHgA/exec";
+
 const SESSION_DAYS = 30;
 
 const ALL_LEVELS = [
@@ -91,14 +119,19 @@ const ALL_LEVELS = [
 /* ================= SESSION ================= */
 function saveSession(email){
   localStorage.setItem("kidsoday_email", email);
-  localStorage.setItem("kidsoday_until", Date.now() + SESSION_DAYS*86400000);
+  localStorage.setItem(
+    "kidsoday_until",
+    Date.now() + SESSION_DAYS * 86400000
+  );
 }
+
 function getSession(){
   const e = localStorage.getItem("kidsoday_email");
   const u = localStorage.getItem("kidsoday_until");
   if (e && u && Date.now() < +u) return e;
   return null;
 }
+
 function signOut(){
   localStorage.clear();
   location.reload();
@@ -137,20 +170,19 @@ function renderLevels(enrolled){
 
     const div = document.createElement("div");
     div.className = "level" + (isEnrolled ? " enrolled" : "");
+
     div.innerHTML = `
       <h3>${code}</h3>
-      <button ${isEnrolled ? "disabled" : ""}>
-        ${isEnrolled ? "Already Enrolled" : "Proceed to Payment"}
-      </button>
+      ${
+        isEnrolled
+          ? `<span class="disabled-btn">Already Enrolled</span>`
+          : `<a
+               class="pay-link"
+               href="https://www.kidsoday.com/payment-page?course=${code}"
+               target="_blank"
+             >Proceed to Payment</a>`
+      }
     `;
-
-    if (!isEnrolled) {
-  div.querySelector("button").onclick = () => {
-    window.location.href =
-      "https://www.kidsoday.com/payment-page?course=" + code;
-  };
-}
-
 
     grid.appendChild(div);
   });
