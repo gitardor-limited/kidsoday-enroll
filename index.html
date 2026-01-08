@@ -149,8 +149,7 @@ function renderCourses(enrolledCodes){
 
 /* ================= ENROLL CLICK ================= */
 function enroll(code){
-  // go to payment page with course code
-  window.location.href = PAYMENT_URL + "?course=" + encodeURIComponent(code);
+  window.open(PAYMENT_URL + "?course=" + encodeURIComponent(code), "_blank");
 }
 
 /* ================= LOAD DATA ================= */
