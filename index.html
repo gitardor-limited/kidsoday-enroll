@@ -145,11 +145,12 @@ function renderLevels(enrolled){
     `;
 
     if (!isEnrolled) {
-      div.querySelector("button").onclick = () => {
-        window.location.href =
-          "https://www.kidsoday.com/payment-page?course=" + code;
-      };
-    }
+  div.querySelector("button").onclick = () => {
+    window.location.href =
+      "https://www.kidsoday.com/payment-page?course=" + code;
+  };
+}
+
 
     grid.appendChild(div);
   });
