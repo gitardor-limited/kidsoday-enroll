@@ -62,7 +62,8 @@ form label { display:block; margin-top:8px; margin-bottom:4px; font-weight:500; 
   transition:background-color 0.15s ease;
 }
 
-#countryList li:hover {
+#countryList li:hover,
+#countryList li.keyboard-selected {
   background-color:#f0f0f0;
 }
 
@@ -260,14 +261,14 @@ function renderForm(email){
     let digits = waNumber.value.replace(/\D/g, "");
     
     // Auto-trim leading zero for local numbers (common in many countries)
-    if (digits.length > 0 && digits[0] === '0' && digits.length > expectedLen) {
+    if (digits.length > 0 && digits[0] === '0' && digits.length === expectedLen + 1) {
       digits = digits.substring(1);
       waNumber.value = digits; // Update display
     }
 
-    // Allow slight flexibility: within 1 digit of expected length
-    if (digits.length < expectedLen - 1 || digits.length > expectedLen + 1) {
-      waError.textContent = `Number should be around ${expectedLen} digits`;
+    // Strict validation: must match expected length exactly
+    if (digits.length !== expectedLen) {
+      waError.textContent = `Must be exactly ${expectedLen} digits`;
       waError.style.display = "block";
       return false;
     }
