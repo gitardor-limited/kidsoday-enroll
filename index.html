@@ -145,7 +145,7 @@ function loadEnroll(email, firstName, lastName){
         renderForm(email, firstName, lastName);
         document.getElementById("status").textContent = "Please fill the enrollment form first";
       } else {
-        const enrolled = new Set((data.records||[]).map(r=>r["Course Code"]));
+        const enrolled = new Set((data.records||[]).map(r=>r["Class Code"]));
         renderLevels(enrolled);
         document.getElementById("status").textContent = "Select a level to continue";
       }
