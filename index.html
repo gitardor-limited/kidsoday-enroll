@@ -98,24 +98,30 @@ function renderForm(email){
       <input type="email" name="Email" value="${email}" readonly />
       <input type="text" name="WhatsApp Number" placeholder="WhatsApp Number" required />
       <input type="text" name="Country of Residence" placeholder="Country of Residence" required />
-    <label>
+    <label for="relation">
   Relation to Child
-  <select name="Relation to Child" id="relation" required onchange="toggleRelationInput()">
-    <option value="">Select…</option>
-    <option value="Mother">Mother</option>
-    <option value="Father">Father</option>
-    <option value="Guardian">Guardian</option>
-    <option value="Others">Others</option>
-  </select>
 </label>
 
-<div id="otherRelationWrap" style="display:none; margin-top:8px;">
-  <input
-    type="text"
-    id="otherRelation"
-    placeholder="Please specify"
-  />
-</div>
+<select
+  id="relation"
+  name="Relation to Child"
+  required
+  onchange="handleRelationChange()"
+>
+  <option value="">Select…</option>
+  <option value="Mother">Mother</option>
+  <option value="Father">Father</option>
+  <option value="Guardian">Guardian</option>
+  <option value="Others">Others</option>
+</select>
+
+<input
+  type="text"
+  id="relationOther"
+  placeholder="Specify"
+  style="display:none; margin-top:8px;"
+/>
+
 
       <button type="submit">Submit Enrollment</button>
     </form>
