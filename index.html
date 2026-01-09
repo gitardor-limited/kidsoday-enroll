@@ -86,10 +86,11 @@ function renderForm(email){
   container.style.display="block";
   container.innerHTML = `
     <form id="enroll-form">
-      <input type="text" name="Student ID" placeholder="Student ID" required />
       <select name="Prefix" required>
         <option value="">Prefix</option>
         <option value="Mr.">Mr.</option>
+        <option value="Mrs.">Mrs.</option>
+        <option value="Miss.">Miss.</option>
         <option value="Ms.">Ms.</option>
       </select>
       <input type="text" name="First Name" placeholder="First Name" required />
@@ -97,7 +98,13 @@ function renderForm(email){
       <input type="email" name="Email" value="${email}" readonly />
       <input type="text" name="WhatsApp Number" placeholder="WhatsApp Number" required />
       <input type="text" name="Country of Residence" placeholder="Country of Residence" required />
-      <input type="text" name="Relation to Child" placeholder="Relation to Child" required />
+      <select name="Relation to Child" required>
+        <option value="">What's your relationship with the kid(s)</option>
+        <option value="Father">Father</option>
+        <option value="Mother">Mother</option>
+        <option value="Guardian">Guardian</option>
+        <option value="Others">Specify</option>
+          <input type="text" name="Relation to Child" placeholder="Relation to Child" required />
       <button type="submit">Submit Enrollment</button>
     </form>
   `;
