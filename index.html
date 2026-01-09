@@ -157,6 +157,10 @@ function loadEnroll(email, firstName, lastName){
 function renderForm(email, firstName, lastName){
   const container = document.getElementById("form-container");
   container.style.display="block";
+  
+    // Show logout button
+  document.getElementById("logout").style.display="block";
+  
   container.innerHTML = `
     <form id="enroll-form" novalidate>
       <div class="form-group">
