@@ -318,7 +318,6 @@ function renderForm(email){
   style="display:none; margin-top:8px;"
 />
 
-
       <button type="submit">Submit Enrollment</button>
     </form>
   `;
@@ -389,5 +388,23 @@ window.onload = ()=>{
   }
 };
 </script>
+  <script>
+function handleRelationChange() {
+  const select = document.getElementById("relation");
+  const otherInput = document.getElementById("relationOther");
+
+  if (!select || !otherInput) return;
+
+  if (select.value === "Others") {
+    otherInput.style.display = "block";
+    otherInput.required = true;
+  } else {
+    otherInput.style.display = "none";
+    otherInput.required = false;
+    otherInput.value = "";
+  }
+}
+</script>
+
 </body>
 </html>
