@@ -107,22 +107,42 @@ const SESSION_DAYS = 30;
 const ALL_LEVELS = ["LEVEL-01","LEVEL-02","LEVEL-03","LEVEL-04","LEVEL-05","LEVEL-06","LEVEL-07","LEVEL-08","LEVEL-09","LEVEL-10","LEVEL-11","LEVEL-12"];
 
 let googleLoadRetries = 0;
-const MAX_GOOGLE_RETRIES = 20; // 2 seconds total (20 * 100ms)
+const MAX_GOOGLE_RETRIES = 20;
 
-function saveSession(email){ localStorage.setItem("kidsoday_email", email); localStorage.setItem("kidsoday_until", Date.now() + SESSION_DAYS*86400000); }
-function getSession(){ const e = localStorage.getItem("kidsoday_email"); const u = localStorage.getItem("kidsoday_until"); if(e && u && Date.now()<+u) return e; return null; }
+function saveSession(email, firstName, lastName){ 
+  localStorage.setItem("kidsoday_email", email); 
+  localStorage.setItem("kidsoday_firstName", firstName || "");
+  localStorage.setItem("kidsoday_lastName", lastName || "");
+  localStorage.setItem("kidsoday_until", Date.now() + SESSION_DAYS*86400000); 
+}
+
+function getSession(){ 
+  const e = localStorage.getItem("kidsoday_email"); 
+  const u = localStorage.getItem("kidsoday_until"); 
+  if(e && u && Date.now()<+u) {
+    return {
+      email: e,
+      firstName: localStorage.getItem("kidsoday_firstName") || "",
+      lastName: localStorage.getItem("kidsoday_lastName") || ""
+    };
+  }
+  return null; 
+}
+
 function signOut(){ localStorage.clear(); location.reload(); }
 
 /* ================= LOAD ENROLLMENT / FORM ================= */
-function loadEnroll(email){
-  fetch(API_URL + "?email=" + encodeURIComponent(email))
+function loadEnroll(email, firstName, lastName){
+  const url = `${API_URL}?email=${encodeURIComponent(email)}&firstName=${encodeURIComponent(firstName || "")}&lastName=${encodeURIComponent(lastName || "")}`;
+  
+  fetch(url)
     .then(r => r.json())
     .then(data => {
       if(data.error) throw data.error;
 
       // If user not in Database → show form
       if(!data.inDatabase){
-        renderForm(email);
+        renderForm(email, firstName, lastName);
         document.getElementById("status").textContent = "Please fill the enrollment form first";
       } else {
         const enrolled = new Set((data.records||[]).map(r=>r["Course Code"]));
@@ -134,7 +154,7 @@ function loadEnroll(email){
 }
 
 /* ================= FORM RENDER ================= */
-function renderForm(email){
+function renderForm(email, firstName, lastName){
   const container = document.getElementById("form-container");
   container.style.display="block";
   container.innerHTML = `
@@ -153,13 +173,13 @@ function renderForm(email){
       
       <div class="form-group">
         <label for="firstName">First Name</label>
-        <input type="text" id="firstName" name="First Name" placeholder="First Name" />
+        <input type="text" id="firstName" name="First Name" placeholder="First Name" value="${firstName || ""}" />
         <small class="error-message" id="firstName-error" style="display:none;"></small>
       </div>
       
       <div class="form-group">
         <label for="lastName">Last Name</label>
-        <input type="text" id="lastName" name="Last Name" placeholder="Last Name" />
+        <input type="text" id="lastName" name="Last Name" placeholder="Last Name" value="${lastName || ""}" />
         <small class="error-message" id="lastName-error" style="display:none;"></small>
       </div>
       
@@ -614,21 +634,25 @@ function clearError(fieldId) {
 /* ================= GOOGLE SIGN-IN ================= */
 function onGoogle(res){
   const payload = JSON.parse(atob(res.credential.split(".")[1]));
-  saveSession(payload.email);
+  const email = payload.email;
+  const firstName = payload.given_name || "";
+  const lastName = payload.family_name || "";
+  
+  saveSession(email, firstName, lastName);
   document.getElementById("login").style.display="none";
-  loadEnroll(payload.email);
+  loadEnroll(email, firstName, lastName);
 }
 
 function initializeGoogleSignIn() {
-  const s = getSession();
+  const sessionData = getSession();
   
   // Check if google object is available
   if (typeof google !== 'undefined' && google.accounts) {
     google.accounts.id.initialize({ client_id: CLIENT_ID, callback: onGoogle });
 
-    if(s){ 
+    if(sessionData){ 
       document.getElementById("login").style.display="none"; 
-      loadEnroll(s); 
+      loadEnroll(sessionData.email, sessionData.firstName, sessionData.lastName); 
     }
     else {
       document.getElementById("status").textContent="Sign in to enroll";
