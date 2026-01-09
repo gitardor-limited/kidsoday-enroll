@@ -14,6 +14,7 @@
   --card:#ffffff;
   --border:#e6e9ef;
   --muted:#666;
+  --error:#d93025;
 }
 
 body { margin:0; font-family:Arial, sans-serif; background:var(--bg); }
@@ -28,11 +29,12 @@ h1 { color:var(--accent); }
 .pay-link:hover { opacity:.9; }
 .disabled-btn { background:#aaa; color:#fff; cursor:not-allowed; }
 form input, form select { display:block; width:100%; margin:6px 0 12px 0; padding:8px; border-radius:6px; border:1px solid #ccc; box-sizing:border-box; }
+form input.error, form select.error { border-color:var(--error); }
 form button { background:var(--accent); color:#fff; border:none; cursor:pointer; padding:12px; font-size:16px; }
 form button:hover { opacity:0.9; }
 form button:disabled { opacity:0.6; cursor:not-allowed; }
 form label { display:block; margin-top:8px; margin-bottom:4px; font-weight:500; }
-.form-group { position:relative; }
+.form-group { position:relative; margin-bottom:12px; }
 #login { margin-top:20px; }
 #logout { margin-top:30px; font-size:13px; }
 #logout a { color:#555; text-decoration:none; }
@@ -68,9 +70,10 @@ form label { display:block; margin-top:8px; margin-bottom:4px; font-weight:500; 
 }
 
 .error-message {
-  color:#d93025;
+  color:var(--error);
   font-size:13px;
-  margin-top:4px;
+  margin-top:-8px;
+  margin-bottom:12px;
   display:block;
 }
 
@@ -135,49 +138,69 @@ function renderForm(email){
   const container = document.getElementById("form-container");
   container.style.display="block";
   container.innerHTML = `
-    <form id="enroll-form">
-      <label for="prefix">Prefix</label>
-      <select id="prefix" name="Prefix" required>
-        <option value="">Select Prefix</option>
-        <option value="Mr.">Mr.</option>
-        <option value="Mrs.">Mrs.</option>
-        <option value="Miss.">Miss.</option>
-        <option value="Ms.">Ms.</option>
-      </select>
-      
-      <label for="firstName">First Name</label>
-      <input type="text" id="firstName" name="First Name" placeholder="First Name" required />
-      
-      <label for="lastName">Last Name</label>
-      <input type="text" id="lastName" name="Last Name" placeholder="Last Name" required />
-      
-      <label for="email">Email</label>
-      <input type="email" id="email" name="Email" value="${email}" readonly />
-      
-      <label for="waCode">WhatsApp Number</label>
-      <div style="display:flex;gap:6px">
-        <select id="waCode" required style="width:auto;flex:0 0 auto;min-width:200px;"></select>
-        <input id="waNumber" type="tel" placeholder="Number" required style="flex:1;">
+    <form id="enroll-form" novalidate>
+      <div class="form-group">
+        <label for="prefix">Prefix</label>
+        <select id="prefix" name="Prefix">
+          <option value="">Select Prefix</option>
+          <option value="Mr.">Mr.</option>
+          <option value="Mrs.">Mrs.</option>
+          <option value="Miss.">Miss.</option>
+          <option value="Ms.">Ms.</option>
+        </select>
+        <small class="error-message" id="prefix-error" style="display:none;"></small>
       </div>
-      <small id="waError" class="error-message" style="display:none;"></small>
-      <input type="hidden" name="WhatsApp Number" id="waFull">
+      
+      <div class="form-group">
+        <label for="firstName">First Name</label>
+        <input type="text" id="firstName" name="First Name" placeholder="First Name" />
+        <small class="error-message" id="firstName-error" style="display:none;"></small>
+      </div>
+      
+      <div class="form-group">
+        <label for="lastName">Last Name</label>
+        <input type="text" id="lastName" name="Last Name" placeholder="Last Name" />
+        <small class="error-message" id="lastName-error" style="display:none;"></small>
+      </div>
+      
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="Email" value="${email}" readonly />
+      </div>
+      
+      <div class="form-group">
+        <label for="waCode">WhatsApp Number</label>
+        <div style="display:flex;gap:6px">
+          <select id="waCode" style="width:auto;flex:0 0 auto;min-width:200px;"></select>
+          <input id="waNumber" type="tel" placeholder="Number" style="flex:1;">
+        </div>
+        <small class="error-message" id="waNumber-error" style="display:none;"></small>
+        <input type="hidden" name="WhatsApp Number" id="waFull">
+      </div>
       
       <div class="form-group">
         <label for="countrySearch">Country of Residence</label>
-        <input type="text" id="countrySearch" name="Country of Residence" placeholder="Start typing your country…" required autocomplete="off" />
+        <input type="text" id="countrySearch" name="Country of Residence" placeholder="Start typing your country…" autocomplete="off" />
         <ul id="countryList"></ul>
+        <small class="error-message" id="countrySearch-error" style="display:none;"></small>
       </div>
 
-      <label for="relation">Relation to Child</label>
-      <select id="relation" name="Relation to Child" required onchange="handleRelationChange()">
-        <option value="">Select…</option>
-        <option value="Mother">Mother</option>
-        <option value="Father">Father</option>
-        <option value="Guardian">Guardian</option>
-        <option value="Others">Others</option>
-      </select>
+      <div class="form-group">
+        <label for="relation">Relation to Child</label>
+        <select id="relation" name="Relation to Child">
+          <option value="">Select…</option>
+          <option value="Mother">Mother</option>
+          <option value="Father">Father</option>
+          <option value="Guardian">Guardian</option>
+          <option value="Others">Others</option>
+        </select>
+        <small class="error-message" id="relation-error" style="display:none;"></small>
+      </div>
 
-      <input type="text" id="relationOther" name="Relation to Child (Other)" placeholder="Specify relation" style="display:none;" aria-label="Other relation specification" />
+      <div class="form-group" id="relationOtherGroup" style="display:none;">
+        <input type="text" id="relationOther" name="Relation to Child (Other)" placeholder="Specify relation" aria-label="Other relation specification" />
+        <small class="error-message" id="relationOther-error" style="display:none;"></small>
+      </div>
 
       <button type="submit">Submit Enrollment</button>
     </form>
@@ -247,13 +270,33 @@ function renderForm(email){
   });
 
   const waNumber=document.getElementById("waNumber");
-  const waError=document.getElementById("waError");
+  const waNumberError=document.getElementById("waNumber-error");
   const waFull=document.getElementById("waFull");
 
+  // Helper function to show error
+  function showError(fieldId, message) {
+    const field = document.getElementById(fieldId);
+    const errorEl = document.getElementById(fieldId + "-error");
+    if (field && errorEl) {
+      field.classList.add("error");
+      errorEl.textContent = message;
+      errorEl.style.display = "block";
+    }
+  }
+
+  // Helper function to clear error
+  function clearError(fieldId) {
+    const field = document.getElementById(fieldId);
+    const errorEl = document.getElementById(fieldId + "-error");
+    if (field && errorEl) {
+      field.classList.remove("error");
+      errorEl.style.display = "none";
+    }
+  }
+
   function validateWA() {
-    if (!waCode.value || !waCode.selectedOptions[0]) {
-      waError.textContent = "Please select a country code";
-      waError.style.display = "block";
+    if (!waCode.value) {
+      showError("waNumber", "Please select a country code");
       return false;
     }
 
@@ -268,18 +311,22 @@ function renderForm(email){
 
     // Strict validation: must match expected length exactly
     if (digits.length !== expectedLen) {
-      waError.textContent = `Must be exactly ${expectedLen} digits`;
-      waError.style.display = "block";
+      showError("waNumber", `Must be exactly ${expectedLen} digits`);
       return false;
     }
 
     waFull.value = waCode.value + digits;
-    waError.style.display = "none";
+    clearError("waNumber");
     return true;
   }
 
-  waCode.onchange=validateWA;
-  waNumber.oninput=validateWA;
+  waCode.onchange = () => {
+    clearError("waNumber");
+    if (waNumber.value) validateWA();
+  };
+  waNumber.oninput = () => {
+    if (waCode.value) validateWA();
+  };
 
   const countries = [
     "Afghanistan","Albania","Algeria","Andorra","Angola","Antigua and Barbuda",
@@ -314,13 +361,36 @@ function renderForm(email){
   const input = document.getElementById("countrySearch");
   const list = document.getElementById("countryList");
 
+  // Clear error on input
+  input.addEventListener("input", () => {
+    clearError("countrySearch");
+    const val = input.value.toLowerCase();
+    list.innerHTML = "";
+    if (!val) { list.style.display="none"; return; }
+
+    positionDropdown();
+
+    const matches = countries.filter(c => c.toLowerCase().includes(val));
+    matches.forEach(c => {
+      const li = document.createElement("li");
+      li.textContent = c;
+      li.addEventListener("click", () => {
+        input.value = c;
+        list.style.display = "none";
+        clearError("countrySearch");
+      });
+      list.appendChild(li);
+    });
+
+    list.style.display = matches.length ? "block" : "none";
+  });
+
   // Position dropdown intelligently based on available space
   function positionDropdown() {
     const rect = input.getBoundingClientRect();
     const spaceBelow = window.innerHeight - rect.bottom;
     const spaceAbove = rect.top;
     
-    // If not enough space below and more space above, show above
     if (spaceBelow < 200 && spaceAbove > spaceBelow) {
       list.style.bottom = "100%";
       list.style.top = "auto";
@@ -335,26 +405,6 @@ function renderForm(email){
   }
 
   input.addEventListener("focus", positionDropdown);
-  input.addEventListener("input", () => {
-    const val = input.value.toLowerCase();
-    list.innerHTML = "";
-    if (!val) { list.style.display="none"; return; }
-
-    positionDropdown(); // Recalculate position when showing
-
-    const matches = countries.filter(c => c.toLowerCase().includes(val));
-    matches.forEach(c => {
-      const li = document.createElement("li");
-      li.textContent = c;
-      li.addEventListener("click", () => {
-        input.value = c;
-        list.style.display = "none";
-      });
-      list.appendChild(li);
-    });
-
-    list.style.display = matches.length ? "block" : "none";
-  });
 
   // Close dropdown on outside click
   document.addEventListener("click", e => {
@@ -384,16 +434,92 @@ function renderForm(email){
       e.preventDefault();
       input.value = items[currentIndex].textContent;
       list.style.display = "none";
+      clearError("countrySearch");
     } else if (e.key === "Escape") {
       list.style.display = "none";
     }
   });
+
+  // Clear errors on input
+  document.getElementById("prefix").addEventListener("change", () => clearError("prefix"));
+  document.getElementById("firstName").addEventListener("input", () => clearError("firstName"));
+  document.getElementById("lastName").addEventListener("input", () => clearError("lastName"));
+  document.getElementById("relation").addEventListener("change", () => {
+    clearError("relation");
+    handleRelationChange();
+  });
+  document.getElementById("relationOther").addEventListener("input", () => clearError("relationOther"));
   
   const form = document.getElementById("enroll-form");
   form.onsubmit = (e) => {
     e.preventDefault();
+    
+    // Clear all previous errors
+    ["prefix", "firstName", "lastName", "waNumber", "countrySearch", "relation", "relationOther"].forEach(clearError);
+    
+    let isValid = true;
+    let firstErrorField = null;
+
+    // Validate Prefix
+    const prefix = document.getElementById("prefix");
+    if (!prefix.value) {
+      showError("prefix", "Please select a prefix");
+      isValid = false;
+      if (!firstErrorField) firstErrorField = prefix;
+    }
+
+    // Validate First Name
+    const firstName = document.getElementById("firstName");
+    if (!firstName.value.trim()) {
+      showError("firstName", "Please enter your first name");
+      isValid = false;
+      if (!firstErrorField) firstErrorField = firstName;
+    }
+
+    // Validate Last Name
+    const lastName = document.getElementById("lastName");
+    if (!lastName.value.trim()) {
+      showError("lastName", "Please enter your last name");
+      isValid = false;
+      if (!firstErrorField) firstErrorField = lastName;
+    }
+
+    // Validate WhatsApp
     if (!validateWA()) {
-      waNumber.focus();
+      isValid = false;
+      if (!firstErrorField) firstErrorField = waNumber;
+    }
+
+    // Validate Country
+    const countrySearch = document.getElementById("countrySearch");
+    if (!countrySearch.value.trim()) {
+      showError("countrySearch", "Please select your country of residence");
+      isValid = false;
+      if (!firstErrorField) firstErrorField = countrySearch;
+    }
+
+    // Validate Relation
+    const relation = document.getElementById("relation");
+    if (!relation.value) {
+      showError("relation", "Please select your relation to the child");
+      isValid = false;
+      if (!firstErrorField) firstErrorField = relation;
+    }
+
+    // Validate Relation Other
+    const relationOther = document.getElementById("relationOther");
+    if (relation.value === "Others" && !relationOther.value.trim()) {
+      showError("relationOther", "Please specify your relation");
+      isValid = false;
+      if (!firstErrorField) firstErrorField = relationOther;
+    }
+
+    // Focus on first error field
+    if (!isValid) {
+      if (firstErrorField) {
+        firstErrorField.focus();
+        firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
       return;
     }
     
@@ -462,17 +588,26 @@ function renderLevels(enrolled){
 /* ================= RELATION CHANGE HANDLER ================= */
 function handleRelationChange() {
   const select = document.getElementById("relation");
+  const otherGroup = document.getElementById("relationOtherGroup");
   const otherInput = document.getElementById("relationOther");
 
-  if (!select || !otherInput) return;
+  if (!select || !otherGroup || !otherInput) return;
 
   if (select.value === "Others") {
-    otherInput.style.display = "block";
-    otherInput.required = true;
+    otherGroup.style.display = "block";
   } else {
-    otherInput.style.display = "none";
-    otherInput.required = false;
+    otherGroup.style.display = "none";
     otherInput.value = "";
+    clearError("relationOther");
+  }
+}
+
+function clearError(fieldId) {
+  const field = document.getElementById(fieldId);
+  const errorEl = document.getElementById(fieldId + "-error");
+  if (field && errorEl) {
+    field.classList.remove("error");
+    errorEl.style.display = "none";
   }
 }
 
