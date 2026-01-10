@@ -224,7 +224,7 @@ const MAX_GOOGLE_RETRIES = 20;
 
 // Get class code from URL parameter
 const urlParams = new URLSearchParams(window.location.search);
-const classCodeFromURL = urlParams.get('code');
+const classCodeFromURL = urlParams.get('course'); // Changed from 'code' to 'course'
 
 function saveSession(email, firstName, lastName){ 
   localStorage.setItem("kidsoday_email", email); 
@@ -262,7 +262,13 @@ function loadEnroll(email, firstName, lastName){
       return r.json();
     })
     .then(data => {
-      console.log("API Response:", data);
+      console.log("=== DEBUG INFO ===");
+      console.log("Class Code from URL:", classCodeFromURL);
+      console.log("User in Database:", data.inDatabase);
+      console.log("Course Data:", data.courseData);
+      console.log("User Data:", data.userData);
+      console.log("Full API Response:", data);
+      console.log("==================");
       
       if(data.error) {
         console.error("API Error:", data.error);
@@ -270,17 +276,26 @@ function loadEnroll(email, firstName, lastName){
         throw new Error(data.error);
       }
 
-      // If class code is provided in URL, show course-specific enrollment
-      if (classCodeFromURL && data.inDatabase) {
-        renderCourseEnrollment(email, data);
+      // PRIORITY 1: If class code is in URL, ALWAYS show course enrollment form
+      if (classCodeFromURL) {
+        // If user not in Database, show enrollment form first
+        if (!data.inDatabase) {
+          renderForm(email, firstName, lastName);
+          document.getElementById("status").innerHTML = `
+            <span style="color:var(--muted);">Please complete your profile first, then you'll be enrolled in the course.</span>
+          `;
+        } else {
+          // User is in database, show course enrollment
+          renderCourseEnrollment(email, data);
+        }
+        return;
       }
-      // If user not in Database → show general enrollment form
-      else if(!data.inDatabase){
+      
+      // PRIORITY 2: No class code - check if user in database
+      if(!data.inDatabase){
         renderForm(email, firstName, lastName);
         document.getElementById("status").textContent = "Please fill the enrollment form first";
-      } 
-      // If no class code provided, show message to visit course page
-      else {
+      } else {
         document.getElementById("status").innerHTML = `
           <span style="color:var(--muted);">Please select a course from the main page to enroll.</span>
         `;
