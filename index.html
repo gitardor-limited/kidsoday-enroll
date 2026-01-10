@@ -209,9 +209,6 @@ form label {
   <!-- EXISTING: General enrollment form (shown if NOT in Database) -->
   <div id="form-container" style="display:none;"></div>
 
-  <!-- EXISTING: Level selection (shown if no course code in URL) -->
-  <div id="levels" style="display:none;"></div>
-
   <div id="logout" style="display:none;">
     <a href="#" onclick="signOut();return false;">Sign out</a>
   </div>
@@ -221,7 +218,6 @@ form label {
 const CLIENT_ID = "656751987892-s5h4b3h7aq6rl63ut7pl6hgm3d2vr46p.apps.googleusercontent.com";
 const API_URL = "https://script.google.com/macros/s/AKfycbyeKrGPdEFxzq312Z4lnjYKjvhupSL2SkGos1LtzbSmO1YVWWFNpEHY29248uYN_-xHgA/exec";
 const SESSION_DAYS = 30;
-const ALL_LEVELS = ["LEVEL-01","LEVEL-02","LEVEL-03","LEVEL-04","LEVEL-05","LEVEL-06","LEVEL-07","LEVEL-08","LEVEL-09","LEVEL-10","LEVEL-11","LEVEL-12"];
 
 let googleLoadRetries = 0;
 const MAX_GOOGLE_RETRIES = 20;
@@ -283,11 +279,12 @@ function loadEnroll(email, firstName, lastName){
         renderForm(email, firstName, lastName);
         document.getElementById("status").textContent = "Please fill the enrollment form first";
       } 
-      // Show level selection
+      // If no class code provided, show message to visit course page
       else {
-        const enrolled = new Set((data.records||[]).map(r=>r["Class Code"]));
-        renderLevels(enrolled);
-        document.getElementById("status").textContent = "Select a level to continue";
+        document.getElementById("status").innerHTML = `
+          <span style="color:var(--muted);">Please select a course from the main page to enroll.</span>
+        `;
+        document.getElementById("logout").style.display = "block";
       }
     })
     .catch(err => { 
@@ -305,6 +302,17 @@ function renderCourseEnrollment(email, data) {
   const container = document.getElementById("course-enrollment-container");
   container.style.display = "block";
   document.getElementById("logout").style.display = "block";
+  
+  // Hide general enrollment form
+  document.getElementById("form-container").style.display = "none";
+
+  // DEBUG: Log all data received
+  console.log("=== DEBUG: Course Enrollment Data ===");
+  console.log("Full data:", data);
+  console.log("Course Data:", data.courseData);
+  console.log("User Data:", data.userData);
+  console.log("Debug Info:", data.debug);
+  console.log("Class Code from URL:", classCodeFromURL);
 
   const courseData = data.courseData || {};
   const userData = data.userData || {};
@@ -313,6 +321,16 @@ function renderCourseEnrollment(email, data) {
   const courseTitle = courseData.courseTitle || "Course Not Found";
   const coursePrice = courseData.price || 0;
   const classCode = classCodeFromURL || "";
+  
+  // DEBUG: Show debug info to user if course not found
+  if (courseTitle === "Course Not Found" && data.debug) {
+    console.error("=== COURSE NOT FOUND - DEBUG INFO ===");
+    console.error("Courses sheet exists:", data.debug.coursesSheetExists);
+    console.error("Headers found:", data.debug.coursesHeaders);
+    console.error("Searching for:", data.debug.searchingFor);
+    console.error("Available class codes:", data.debug.availableClassCodes);
+    console.error("Column indices:", data.debug.columnIndices);
+  }
 
   container.innerHTML = `
     <div class="course-info">
@@ -810,8 +828,11 @@ function renderForm(email, firstName, lastName){
     .then(res=>{
       if(res.success){
         container.style.display="none";
-        document.getElementById("status").textContent="Form submitted! Now select a level.";
-        renderLevels(new Set());
+        document.getElementById("status").innerHTML = `
+          <span style="color:green;">✓ Form submitted successfully!</span><br>
+          <small style="color:var(--muted);">You can now enroll in courses. Please visit the main page to select a course.</small>
+        `;
+        document.getElementById("logout").style.display = "block";
       } else {
         alert("Error: "+res.error);
         submitBtn.disabled = false;
@@ -825,29 +846,6 @@ function renderForm(email, firstName, lastName){
       submitBtn.textContent = "Submit Enrollment";
     });
   }
-}
-
-/* ================= RENDER LEVELS ================= */
-function renderLevels(enrolled){
-  const wrap = document.getElementById("levels");
-  wrap.innerHTML = `<div class="levels"></div>`;
-  const grid = wrap.firstChild;
-
-  ALL_LEVELS.forEach(code=>{
-    const isEnrolled = enrolled.has(code);
-    const div = document.createElement("div");
-    div.className="level"+(isEnrolled?" enrolled":"");
-    div.innerHTML = `
-      <h3>${code}</h3>
-      ${isEnrolled
-        ? `<span class="disabled-btn">Already Enrolled</span>`
-        : `<a class="pay-link" href="?code=${code}">Enroll Now</a>`}
-    `;
-    grid.appendChild(div);
-  });
-
-  wrap.style.display="block";
-  document.getElementById("logout").style.display="block";
 }
 
 /* ================= RELATION CHANGE HANDLER ================= */
