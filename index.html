@@ -226,6 +226,20 @@ const MAX_GOOGLE_RETRIES = 20;
 const urlParams = new URLSearchParams(window.location.search);
 const classCodeFromURL = urlParams.get('code');
 
+// DEBUG URL PARSING
+console.log("=== URL PARSING DEBUG ===");
+console.log("Full URL:", window.location.href);
+console.log("Search string:", window.location.search);
+console.log("URLSearchParams:", urlParams.toString());
+console.log("All params:");
+for (const [key, value] of urlParams) {
+  console.log(`  ${key}: ${value}`);
+}
+console.log("Getting 'code':", urlParams.get('code'));
+console.log("classCodeFromURL:", classCodeFromURL);
+console.log("Type:", typeof classCodeFromURL);
+console.log("========================");
+
 function saveSession(email, firstName, lastName){ 
   localStorage.setItem("kidsoday_email", email); 
   localStorage.setItem("kidsoday_firstName", firstName || "");
@@ -291,7 +305,19 @@ function loadEnroll(email, firstName, lastName){
           `;
         } else {
           console.log("✓ User in database - showing course enrollment");
-          // User is in database, show course enrollment
+          // Check if course data was found
+          if (!data.courseData) {
+            console.error("✗ Course data is NULL!");
+            console.error("Debug info:", data.debug);
+            document.getElementById("status").innerHTML = `
+              <span style="color:var(--error);">Course not found!</span><br>
+              <small style="color:var(--muted);">Class Code: ${classCodeFromURL}</small><br>
+              <small style="color:var(--muted);">Please check the console for debug information.</small>
+            `;
+            document.getElementById("logout").style.display = "block";
+            return;
+          }
+          // User is in database and course found, show course enrollment
           renderCourseEnrollment(email, data);
         }
         return;
