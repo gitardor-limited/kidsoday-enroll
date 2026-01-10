@@ -256,10 +256,23 @@ function signOut(){ localStorage.clear(); location.reload(); }
 function loadEnroll(email, firstName, lastName){
   const url = `${API_URL}?email=${encodeURIComponent(email)}&firstName=${encodeURIComponent(firstName || "")}&lastName=${encodeURIComponent(lastName || "")}&classCode=${encodeURIComponent(classCodeFromURL || "")}`;
   
+  document.getElementById("status").textContent = "Loading your information...";
+  
   fetch(url)
-    .then(r => r.json())
+    .then(r => {
+      if (!r.ok) {
+        throw new Error(`HTTP error! status: ${r.status}`);
+      }
+      return r.json();
+    })
     .then(data => {
-      if(data.error) throw data.error;
+      console.log("API Response:", data);
+      
+      if(data.error) {
+        console.error("API Error:", data.error);
+        if (data.stack) console.error("Stack:", data.stack);
+        throw new Error(data.error);
+      }
 
       // If class code is provided in URL, show course-specific enrollment
       if (classCodeFromURL && data.inDatabase) {
@@ -278,8 +291,12 @@ function loadEnroll(email, firstName, lastName){
       }
     })
     .catch(err => { 
-      console.error(err); 
-      document.getElementById("status").textContent = "Failed to load enrollment info"; 
+      console.error("Fetch Error:", err); 
+      document.getElementById("status").innerHTML = `
+        <span style="color:var(--error);">Failed to load enrollment info</span><br>
+        <small style="color:var(--muted);">Error: ${err.message}</small><br>
+        <small style="color:var(--muted);">Please try refreshing the page or contact support if the issue persists.</small>
+      `; 
     });
 }
 
