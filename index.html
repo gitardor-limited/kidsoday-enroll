@@ -1,1 +1,976 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Enroll | Kids O'Day</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://checkout.flutterwave.com/v3.js"></script>
+
+<style>
+:root {
+  --accent:#1a73e8;
+  --bg:#f7f9fc;
+  --card:#ffffff;
+  --border:#e6e9ef;
+  --muted:#666;
+  --error:#d93025;
+}
+
+body { 
+  margin:0; 
+  font-family:Arial, sans-serif; 
+  background:var(--bg); 
+}
+
+.container { 
+  max-width:900px; 
+  margin:30px auto; 
+  padding:20px; 
+  background:var(--card); 
+  border-radius:14px; 
+  border:1px solid var(--border); 
+  box-shadow:0 6px 20px rgba(0,0,0,.05); 
+  position:relative; 
+}
+
+h1 { 
+  color:var(--accent); 
+  margin-bottom:10px;
+}
+
+h3 {
+  color:#333;
+  font-size:20px;
+  margin-bottom:20px;
+}
+
+#status { 
+  font-size:14px; 
+  color:var(--muted); 
+  margin-bottom:20px; 
+}
+
+.course-info {
+  background:#f8f9fa;
+  border-left:4px solid var(--accent);
+  padding:15px;
+  margin-bottom:25px;
+  border-radius:6px;
+}
+
+.course-info h3 {
+  margin-top:0;
+  margin-bottom:8px;
+  color:var(--accent);
+}
+
+.course-info p {
+  margin:5px 0;
+  color:var(--muted);
+  font-size:14px;
+}
+
+.course-info .price {
+  font-size:24px;
+  font-weight:bold;
+  color:#333;
+  margin-top:10px;
+}
+
+form input, form select { 
+  display:block; 
+  width:100%; 
+  margin:6px 0 12px 0; 
+  padding:8px; 
+  border-radius:6px; 
+  border:1px solid #ccc; 
+  box-sizing:border-box; 
+}
+
+form input.error, form select.error { 
+  border-color:var(--error); 
+}
+
+form button { 
+  background:var(--accent); 
+  color:#fff; 
+  border:none; 
+  cursor:pointer; 
+  padding:12px; 
+  font-size:16px;
+  width:100%;
+  border-radius:8px;
+  font-weight:bold;
+}
+
+form button:hover { 
+  opacity:0.9; 
+}
+
+form button:disabled { 
+  opacity:0.6; 
+  cursor:not-allowed; 
+}
+
+form label { 
+  display:block; 
+  margin-top:8px; 
+  margin-bottom:4px; 
+  font-weight:500; 
+}
+
+.form-group { 
+  position:relative; 
+  margin-bottom:12px; 
+}
+
+.error-message {
+  color:var(--error);
+  font-size:13px;
+  margin-top:-8px;
+  margin-bottom:12px;
+  display:block;
+}
+
+#login { 
+  margin-top:20px; 
+}
+
+#logout { 
+  margin-top:30px; 
+  font-size:13px; 
+}
+
+#logout a { 
+  color:#555; 
+  text-decoration:none; 
+}
+
+#logout a:hover { 
+  text-decoration:underline; 
+}
+
+/* Country autocomplete dropdown */
+#countryList { 
+  border:1px solid #ccc; 
+  max-height:200px; 
+  overflow-y:auto; 
+  padding:0; 
+  margin:2px 0 12px 0; 
+  display:none; 
+  list-style:none; 
+  position:absolute; 
+  background:#fff; 
+  width:calc(100% - 2px);
+  max-width:100%;
+  z-index:1000;
+  box-shadow:0 2px 8px rgba(0,0,0,0.15);
+  border-radius:4px;
+}
+
+#countryList li {
+  padding:8px 12px;
+  cursor:pointer;
+  transition:background-color 0.15s ease;
+}
+
+#countryList li:hover,
+#countryList li.keyboard-selected {
+  background-color:#f0f0f0;
+}
+
+@media (max-width: 600px) {
+  .container { 
+    margin:15px; 
+    padding:15px; 
+  }
+  h1 { 
+    font-size:24px; 
+  }
+  #countryList { 
+    max-height:150px; 
+  }
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+  <h1>Enroll in a Level</h1>
+  <div id="status">Checking session…</div>
+
+  <div id="login"></div>
+
+  <!-- NEW: Course-specific enrollment form -->
+  <div id="course-enrollment-container" style="display:none;"></div>
+
+  <!-- EXISTING: General enrollment form (shown if NOT in Database) -->
+  <div id="form-container" style="display:none;"></div>
+
+  <div id="logout" style="display:none;">
+    <a href="#" onclick="signOut();return false;">Sign out</a>
+  </div>
+</div>
+
+<script>
+const CLIENT_ID = "656751987892-s5h4b3h7aq6rl63ut7pl6hgm3d2vr46p.apps.googleusercontent.com";
+const API_URL = "https://script.google.com/macros/s/AKfycbyeKrGPdEFxzq312Z4lnjYKjvhupSL2SkGos1LtzbSmO1YVWWFNpEHY29248uYN_-xHgA/exec";
+const SESSION_DAYS = 30;
+
+let googleLoadRetries = 0;
+const MAX_GOOGLE_RETRIES = 20;
+
+// Get class code from URL parameter
+const urlParams = new URLSearchParams(window.location.search);
+const classCodeFromURL = urlParams.get('code');
+
+// DEBUG URL PARSING
+console.log("=== URL PARSING DEBUG ===");
+console.log("Full URL:", window.location.href);
+console.log("Search string:", window.location.search);
+console.log("URLSearchParams:", urlParams.toString());
+console.log("All params:");
+for (const [key, value] of urlParams) {
+  console.log(`  ${key}: ${value}`);
+}
+console.log("Getting 'code':", urlParams.get('code'));
+console.log("classCodeFromURL:", classCodeFromURL);
+console.log("Type:", typeof classCodeFromURL);
+console.log("========================");
+
+function saveSession(email, firstName, lastName){ 
+  localStorage.setItem("kidsoday_email", email); 
+  localStorage.setItem("kidsoday_firstName", firstName || "");
+  localStorage.setItem("kidsoday_lastName", lastName || "");
+  localStorage.setItem("kidsoday_until", Date.now() + SESSION_DAYS*86400000); 
+}
+
+function getSession(){ 
+  const e = localStorage.getItem("kidsoday_email"); 
+  const u = localStorage.getItem("kidsoday_until"); 
+  if(e && u && Date.now()<+u) {
+    return {
+      email: e,
+      firstName: localStorage.getItem("kidsoday_firstName") || "",
+      lastName: localStorage.getItem("kidsoday_lastName") || ""
+    };
+  }
+  return null; 
+}
+
+function signOut(){ localStorage.clear(); location.reload(); }
+
+/* ================= LOAD ENROLLMENT / FORM ================= */
+function loadEnroll(email, firstName, lastName){
+  const url = `${API_URL}?email=${encodeURIComponent(email)}&firstName=${encodeURIComponent(firstName || "")}&lastName=${encodeURIComponent(lastName || "")}&classCode=${encodeURIComponent(classCodeFromURL || "")}`;
+  
+  document.getElementById("status").textContent = "Loading your information...";
+  
+  fetch(url)
+    .then(r => {
+      if (!r.ok) {
+        throw new Error(`HTTP error! status: ${r.status}`);
+      }
+      return r.json();
+    })
+    .then(data => {
+      console.log("=== DEBUG INFO ===");
+      console.log("Class Code from URL:", classCodeFromURL);
+      console.log("Class Code Type:", typeof classCodeFromURL);
+      console.log("Class Code Truthy?:", !!classCodeFromURL);
+      console.log("User in Database:", data.inDatabase);
+      console.log("Course Data:", data.courseData);
+      console.log("User Data:", data.userData);
+      console.log("Debug from API:", data.debug);
+      console.log("Full API Response:", data);
+      console.log("==================");
+      
+      if(data.error) {
+        console.error("API Error:", data.error);
+        if (data.stack) console.error("Stack:", data.stack);
+        throw new Error(data.error);
+      }
+
+      // PRIORITY 1: If class code is in URL, ALWAYS show course enrollment form
+      if (classCodeFromURL) {
+        console.log("✓ Class code detected in URL:", classCodeFromURL);
+        // If user not in Database, show enrollment form first
+        if (!data.inDatabase) {
+          console.log("✗ User NOT in database - showing enrollment form");
+          renderForm(email, firstName, lastName);
+          document.getElementById("status").innerHTML = `
+            <span style="color:var(--muted);">Please complete your profile first, then you'll be enrolled in the course.</span>
+          `;
+        } else {
+          console.log("✓ User in database - showing course enrollment");
+          // Check if course data was found
+          if (!data.courseData) {
+            console.error("✗ Course data is NULL!");
+            console.error("Debug info:", data.debug);
+            document.getElementById("status").innerHTML = `
+              <span style="color:var(--error);">Course not found!</span><br>
+              <small style="color:var(--muted);">Class Code: ${classCodeFromURL}</small><br>
+              <small style="color:var(--muted);">Please check the console for debug information.</small>
+            `;
+            document.getElementById("logout").style.display = "block";
+            return;
+          }
+          // User is in database and course found, show course enrollment
+          renderCourseEnrollment(email, data);
+        }
+        return;
+      }
+      
+      console.log("✗ No class code in URL");
+      
+      // PRIORITY 2: No class code - check if user in database
+      if(!data.inDatabase){
+        renderForm(email, firstName, lastName);
+        document.getElementById("status").textContent = "Please fill the enrollment form first";
+      } else {
+        document.getElementById("status").innerHTML = `
+          <span style="color:var(--muted);">Please select a course from the main page to enroll.</span>
+        `;
+        document.getElementById("logout").style.display = "block";
+      }
+    })
+    .catch(err => { 
+      console.error("Fetch Error:", err); 
+      document.getElementById("status").innerHTML = `
+        <span style="color:var(--error);">Failed to load enrollment info</span><br>
+        <small style="color:var(--muted);">Error: ${err.message}</small><br>
+        <small style="color:var(--muted);">Please try refreshing the page or contact support if the issue persists.</small>
+      `; 
+    });
+}
+
+/* ================= NEW: COURSE-SPECIFIC ENROLLMENT ================= */
+function renderCourseEnrollment(email, data) {
+  const container = document.getElementById("course-enrollment-container");
+  container.style.display = "block";
+  document.getElementById("logout").style.display = "block";
+  
+  // Hide general enrollment form
+  document.getElementById("form-container").style.display = "none";
+
+  // DEBUG: Log all data received
+  console.log("=== DEBUG: Course Enrollment Data ===");
+  console.log("Full data:", data);
+  console.log("Course Data:", data.courseData);
+  console.log("User Data:", data.userData);
+  console.log("Debug Info:", data.debug);
+  console.log("Class Code from URL:", classCodeFromURL);
+
+  const courseData = data.courseData || {};
+  const userData = data.userData || {};
+  const isAlreadyEnrolled = data.alreadyEnrolled || false;
+
+  const courseTitle = courseData.courseTitle || "Course Not Found";
+  const coursePrice = courseData.price || 0;
+  const classCode = classCodeFromURL || "";
+  
+  // DEBUG: Show debug info to user if course not found
+  if (courseTitle === "Course Not Found" && data.debug) {
+    console.error("=== COURSE NOT FOUND - DEBUG INFO ===");
+    console.error("Courses sheet exists:", data.debug.coursesSheetExists);
+    console.error("Headers found:", data.debug.coursesHeaders);
+    console.error("Searching for:", data.debug.searchingFor);
+    console.error("Available class codes:", data.debug.availableClassCodes);
+    console.error("Column indices:", data.debug.columnIndices);
+  }
+
+  container.innerHTML = `
+    <div class="course-info">
+      <h3>${courseTitle}</h3>
+      <div class="price">₦${coursePrice}</div>
+    </div>
+
+    <form id="courseEnrollForm" novalidate>
+      <div class="form-group">
+        <label for="studentName">Full Name</label>
+        <input type="text" id="studentName" name="studentName" value="${userData.fullName || ''}" readonly style="background:#f1f3f4;cursor:not-allowed;">
+      </div>
+
+      <div class="form-group">
+        <label for="studentEmail">Email Address</label>
+        <input type="email" id="studentEmail" name="studentEmail" value="${email}" readonly style="background:#f1f3f4;cursor:not-allowed;">
+      </div>
+
+      <div class="form-group">
+        <label for="studentPhone">WhatsApp Phone Number</label>
+        <input type="tel" id="studentPhone" name="studentPhone" value="${userData.whatsappNumber || ''}" readonly style="background:#f1f3f4;cursor:not-allowed;">
+      </div>
+
+      <div class="form-group">
+        <label for="studentCourseTitle">Course Title</label>
+        <input type="text" id="studentCourseTitle" value="${courseTitle}" readonly style="background:#f1f3f4;cursor:not-allowed;">
+      </div>
+
+      <div class="form-group">
+        <label for="studentClassCode">Class Code</label>
+        <input type="text" id="studentClassCode" value="${classCode}" readonly style="background:#f1f3f4;cursor:not-allowed;">
+      </div>
+
+      <button type="submit" id="payButton" ${isAlreadyEnrolled ? 'disabled' : ''}>
+        ${isAlreadyEnrolled ? 'Already Enrolled' : 'Proceed to Payment'}
+      </button>
+    </form>
+  `;
+
+  if (!isAlreadyEnrolled) {
+    const form = document.getElementById('courseEnrollForm');
+    const payButton = document.getElementById('payButton');
+
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      // Disable button to prevent double submission
+      payButton.disabled = true;
+      payButton.textContent = "Processing...";
+      
+      FlutterwaveCheckout({
+        public_key: "FLWPUBK-94d902aff72af3143763e961a5d612f0-X",
+        tx_ref: "TX_REF_" + Date.now(),
+        amount: coursePrice,
+        currency: "NGN",
+        payment_options: "card, mobilemoney, ussd",
+        customer: {
+          name: userData.fullName || "",
+          email: email,
+          phone_number: userData.whatsappNumber || ""
+        },
+        meta: {
+          course: courseTitle,
+          class_code: classCode
+        },
+        callback: function (data) {
+          // Redirect to success page after payment
+          window.location.href = "https://www.kidsoday.com/enroll/payment-success";
+        },
+        onclose: function() {
+          console.log("Payment modal closed");
+          payButton.disabled = false;
+          payButton.textContent = "Proceed to Payment";
+        },
+      });
+    });
+  } else {
+    document.getElementById("status").textContent = "You are already enrolled in this course";
+  }
+}
+
+/* ================= EXISTING: GENERAL ENROLLMENT FORM ================= */
+function renderForm(email, firstName, lastName){
+  const container = document.getElementById("form-container");
+  container.style.display="block";
+  
+  // Show logout button
+  document.getElementById("logout").style.display="block";
+  
+  container.innerHTML = `
+    <form id="enroll-form" novalidate>
+      <div class="form-group">
+        <label for="prefix">Prefix</label>
+        <select id="prefix" name="Prefix">
+          <option value="">Select Prefix</option>
+          <option value="Mr.">Mr.</option>
+          <option value="Mrs.">Mrs.</option>
+          <option value="Miss.">Miss.</option>
+          <option value="Ms.">Ms.</option>
+        </select>
+        <small class="error-message" id="prefix-error" style="display:none;"></small>
+      </div>
+      
+      <div class="form-group">
+        <label for="firstName">First Name</label>
+        <input type="text" id="firstName" name="First Name" placeholder="First Name" value="${firstName || ""}" />
+        <small class="error-message" id="firstName-error" style="display:none;"></small>
+      </div>
+      
+      <div class="form-group">
+        <label for="lastName">Last Name</label>
+        <input type="text" id="lastName" name="Last Name" placeholder="Last Name" value="${lastName || ""}" />
+        <small class="error-message" id="lastName-error" style="display:none;"></small>
+      </div>
+      
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="Email" value="${email}" readonly />
+      </div>
+      
+      <div class="form-group">
+        <label for="waCode">WhatsApp Number</label>
+        <div style="display:flex;gap:6px">
+          <select id="waCode" style="width:auto;flex:0 0 auto;min-width:200px;"></select>
+          <input id="waNumber" type="tel" placeholder="Number" style="flex:1;">
+        </div>
+        <small class="error-message" id="waNumber-error" style="display:none;"></small>
+        <input type="hidden" name="WhatsApp Number" id="waFull">
+      </div>
+      
+      <div class="form-group">
+        <label for="countrySearch">Country of Residence</label>
+        <input type="text" id="countrySearch" name="Country of Residence" placeholder="Start typing your country…" autocomplete="off" />
+        <ul id="countryList"></ul>
+        <small class="error-message" id="countrySearch-error" style="display:none;"></small>
+      </div>
+
+      <div class="form-group">
+        <label for="relation">Relation to Child</label>
+        <select id="relation" name="Relation to Child">
+          <option value="">Select…</option>
+          <option value="Mother">Mother</option>
+          <option value="Father">Father</option>
+          <option value="Guardian">Guardian</option>
+          <option value="Others">Others</option>
+        </select>
+        <small class="error-message" id="relation-error" style="display:none;"></small>
+      </div>
+
+      <div class="form-group" id="relationOtherGroup" style="display:none;">
+        <input type="text" id="relationOther" name="Relation to Child (Other)" placeholder="Specify relation" aria-label="Other relation specification" />
+        <small class="error-message" id="relationOther-error" style="display:none;"></small>
+      </div>
+
+      <button type="submit">Submit Enrollment</button>
+    </form>
+  `;
+
+  /* COUNTRY CODES (COMPLETE) */
+  const codes = [
+    ["+234","Nigeria",10],["+1","United States/Canada",10],["+7","Russia",10],["+20","Egypt",10],["+27","South Africa",9],
+    ["+30","Greece",10],["+31","Netherlands",9],["+32","Belgium",9],["+33","France",9],
+    ["+34","Spain",9],["+36","Hungary",9],["+39","Italy",10],["+40","Romania",9],
+    ["+41","Switzerland",9],["+43","Austria",10],["+44","United Kingdom",10],["+45","Denmark",8],
+    ["+46","Sweden",9],["+47","Norway",8],["+48","Poland",9],["+49","Germany",10],
+    ["+51","Peru",9],["+52","Mexico",10],["+53","Cuba",8],["+54","Argentina",10],
+    ["+55","Brazil",11],["+56","Chile",9],["+57","Colombia",10],["+58","Venezuela",10],
+    ["+60","Malaysia",9],["+61","Australia",9],["+62","Indonesia",10],["+63","Philippines",10],
+    ["+64","New Zealand",9],["+65","Singapore",8],["+66","Thailand",9],["+81","Japan",10],
+    ["+82","South Korea",10],["+84","Vietnam",9],["+86","China",11],["+90","Turkey",10],
+    ["+91","India",10],["+92","Pakistan",10],["+93","Afghanistan",9],["+94","Sri Lanka",9],
+    ["+95","Myanmar",9],["+98","Iran",10],["+211","South Sudan",9],["+212","Morocco",9],
+    ["+213","Algeria",9],["+216","Tunisia",8],["+218","Libya",9],["+220","Gambia",7],
+    ["+221","Senegal",9],["+222","Mauritania",8],["+223","Mali",8],["+224","Guinea",9],
+    ["+225","Ivory Coast",8],["+226","Burkina Faso",8],["+227","Niger",8],["+228","Togo",8],
+    ["+229","Benin",8],["+230","Mauritius",7],["+231","Liberia",8],["+232","Sierra Leone",8],
+    ["+233","Ghana",9],["+234","Nigeria",10],["+235","Chad",8],["+236","Central African Republic",8],
+    ["+237","Cameroon",9],["+238","Cape Verde",7],["+239","Sao Tome and Principe",7],
+    ["+240","Equatorial Guinea",9],["+241","Gabon",7],["+242","Congo",9],["+243","DR Congo",9],
+    ["+244","Angola",9],["+245","Guinea-Bissau",7],["+246","Diego Garcia",7],["+248","Seychelles",7],
+    ["+249","Sudan",9],["+250","Rwanda",9],["+251","Ethiopia",9],["+252","Somalia",8],
+    ["+253","Djibouti",8],["+254","Kenya",9],["+255","Tanzania",9],["+256","Uganda",9],
+    ["+257","Burundi",8],["+258","Mozambique",9],["+260","Zambia",9],["+261","Madagascar",9],
+    ["+262","Reunion",9],["+263","Zimbabwe",9],["+264","Namibia",9],["+265","Malawi",9],
+    ["+266","Lesotho",8],["+267","Botswana",8],["+268","Eswatini",8],["+269","Comoros",7],
+    ["+350","Gibraltar",8],["+351","Portugal",9],["+352","Luxembourg",9],["+353","Ireland",9],
+    ["+354","Iceland",7],["+355","Albania",9],["+356","Malta",8],["+357","Cyprus",8],
+    ["+358","Finland",9],["+359","Bulgaria",9],["+370","Lithuania",8],["+371","Latvia",8],
+    ["+372","Estonia",7],["+373","Moldova",8],["+374","Armenia",8],["+375","Belarus",9],
+    ["+376","Andorra",6],["+377","Monaco",8],["+378","San Marino",8],["+379","Vatican City",8],
+    ["+380","Ukraine",9],["+381","Serbia",8],["+382","Montenegro",8],["+383","Kosovo",8],
+    ["+385","Croatia",9],["+386","Slovenia",8],["+387","Bosnia and Herzegovina",8],["+389","North Macedonia",8],
+    ["+420","Czech Republic",9],["+421","Slovakia",9],["+423","Liechtenstein",7],
+    ["+501","Belize",7],["+502","Guatemala",8],["+503","El Salvador",8],["+504","Honduras",8],
+    ["+505","Nicaragua",8],["+506","Costa Rica",8],["+507","Panama",8],["+508","Saint Pierre",7],
+    ["+509","Haiti",8],["+590","Guadeloupe",9],["+591","Bolivia",8],["+592","Guyana",7],
+    ["+593","Ecuador",9],["+594","French Guiana",9],["+595","Paraguay",8],["+596","Martinique",9],
+    ["+597","Suriname",7],["+598","Uruguay",8],["+599","Curacao",7],["+670","Timor-Leste",8],
+    ["+672","Norfolk Island",6],["+673","Brunei",7],["+674","Nauru",7],["+675","Papua New Guinea",8],
+    ["+676","Tonga",7],["+677","Solomon Islands",7],["+678","Vanuatu",7],["+679","Fiji",7],
+    ["+680","Palau",7],["+681","Wallis and Futuna",6],["+682","Cook Islands",6],["+683","Niue",6],
+    ["+685","Samoa",7],["+686","Kiribati",7],["+687","New Caledonia",6],["+688","Tuvalu",6],
+    ["+689","French Polynesia",6],["+690","Tokelau",5],["+691","Micronesia",7],["+692","Marshall Islands",7],
+    ["+850","North Korea",9],["+852","Hong Kong",8],["+853","Macau",8],["+855","Cambodia",8],
+    ["+856","Laos",8],["+880","Bangladesh",10],["+886","Taiwan",9],["+960","Maldives",7],
+    ["+961","Lebanon",8],["+962","Jordan",9],["+963","Syria",9],["+964","Iraq",10],["+965","Kuwait",8],
+    ["+966","Saudi Arabia",9],["+967","Yemen",9],["+968","Oman",8],["+970","Palestine",8],["+971","UAE",9],
+    ["+972","Israel",9],["+973","Bahrain",8],["+974","Qatar",8],["+975","Bhutan",8],["+976","Mongolia",8],
+    ["+977","Nepal",10],["+992","Tajikistan",9],["+993","Turkmenistan",8],["+994","Azerbaijan",9],
+    ["+995","Georgia",9],["+996","Kyrgyzstan",9],["+998","Uzbekistan",9]
+  ];
+
+  const waCode = document.getElementById("waCode");
+  codes.forEach(c=>{
+    const o=document.createElement("option");
+    o.value=c[0];
+    o.dataset.len=c[2];
+    o.textContent=`${c[1]} (${c[0]})`;
+    waCode.appendChild(o);
+  });
+
+  const waNumber=document.getElementById("waNumber");
+  const waNumberError=document.getElementById("waNumber-error");
+  const waFull=document.getElementById("waFull");
+
+  // Helper function to show error
+  function showError(fieldId, message) {
+    const field = document.getElementById(fieldId);
+    const errorEl = document.getElementById(fieldId + "-error");
+    if (field && errorEl) {
+      field.classList.add("error");
+      errorEl.textContent = message;
+      errorEl.style.display = "block";
+    }
+  }
+
+  // Helper function to clear error
+  function clearError(fieldId) {
+    const field = document.getElementById(fieldId);
+    const errorEl = document.getElementById(fieldId + "-error");
+    if (field && errorEl) {
+      field.classList.remove("error");
+      errorEl.style.display = "none";
+    }
+  }
+
+  function validateWA() {
+    if (!waCode.value) {
+      showError("waNumber", "Please select a country code");
+      return false;
+    }
+
+    const expectedLen = parseInt(waCode.selectedOptions[0].dataset.len, 10);
+    let digits = waNumber.value.replace(/\D/g, "");
+    
+    // Auto-trim leading zero for local numbers (common in many countries)
+    if (digits.length > 0 && digits[0] === '0' && digits.length === expectedLen + 1) {
+      digits = digits.substring(1);
+      waNumber.value = digits; // Update display
+    }
+
+    // Strict validation: must match expected length exactly
+    if (digits.length !== expectedLen) {
+      showError("waNumber", `Must be exactly ${expectedLen} digits`);
+      return false;
+    }
+
+    waFull.value = waCode.value + digits;
+    clearError("waNumber");
+    return true;
+  }
+
+  waCode.onchange = () => {
+    clearError("waNumber");
+    if (waNumber.value) validateWA();
+  };
+  waNumber.oninput = () => {
+    if (waCode.value) validateWA();
+  };
+
+  const countries = [
+    "Afghanistan","Albania","Algeria","Andorra","Angola","Antigua and Barbuda",
+    "Argentina","Armenia","Australia","Austria","Azerbaijan","Bahamas","Bahrain",
+    "Bangladesh","Barbados","Belarus","Belgium","Belize","Benin","Bhutan","Bolivia",
+    "Bosnia and Herzegovina","Botswana","Brazil","Brunei","Bulgaria","Burkina Faso",
+    "Burundi","Cambodia","Cameroon","Canada","Cape Verde","Central African Republic",
+    "Chad","Chile","China","Colombia","Comoros","Congo","Costa Rica","Croatia","Cuba",
+    "Cyprus","Czech Republic","Denmark","Djibouti","Dominica","Dominican Republic",
+    "Ecuador","Egypt","El Salvador","Equatorial Guinea","Eritrea","Estonia","Eswatini",
+    "Ethiopia","Fiji","Finland","France","Gabon","Gambia","Georgia","Germany","Ghana",
+    "Greece","Grenada","Guatemala","Guinea","Guinea-Bissau","Guyana","Haiti","Honduras",
+    "Hungary","Iceland","India","Indonesia","Iran","Iraq","Ireland","Israel","Italy",
+    "Jamaica","Japan","Jordan","Kazakhstan","Kenya","Kiribati","Kuwait","Kyrgyzstan",
+    "Laos","Latvia","Lebanon","Lesotho","Liberia","Libya","Liechtenstein","Lithuania",
+    "Luxembourg","Madagascar","Malawi","Malaysia","Maldives","Mali","Malta","Marshall Islands",
+    "Mauritania","Mauritius","Mexico","Micronesia","Moldova","Monaco","Mongolia","Montenegro",
+    "Morocco","Mozambique","Myanmar","Namibia","Nauru","Nepal","Netherlands","New Zealand",
+    "Nicaragua","Niger","Nigeria","North Korea","North Macedonia","Norway","Oman","Pakistan",
+    "Palau","Panama","Papua New Guinea","Paraguay","Peru","Philippines","Poland","Portugal",
+    "Qatar","Romania","Russia","Rwanda","Saint Kitts and Nevis","Saint Lucia",
+    "Saint Vincent and the Grenadines","Samoa","San Marino","Sao Tome and Principe",
+    "Saudi Arabia","Senegal","Serbia","Seychelles","Sierra Leone","Singapore","Slovakia",
+    "Slovenia","Solomon Islands","Somalia","South Africa","South Sudan","Spain","Sri Lanka",
+    "Sudan","Suriname","Sweden","Switzerland","Syria","Taiwan","Tajikistan","Tanzania",
+    "Thailand","Togo","Tonga","Trinidad and Tobago","Tunisia","Turkey","Turkmenistan",
+    "Tuvalu","Uganda","Ukraine","United Arab Emirates","United Kingdom","United States",
+    "Uruguay","Uzbekistan","Vanuatu","Vatican City","Venezuela","Vietnam","Yemen","Zambia",
+    "Zimbabwe"
+  ];
+
+  const input = document.getElementById("countrySearch");
+  const list = document.getElementById("countryList");
+
+  // Clear error on input
+  input.addEventListener("input", () => {
+    clearError("countrySearch");
+    const val = input.value.toLowerCase();
+    list.innerHTML = "";
+    if (!val) { list.style.display="none"; return; }
+
+    positionDropdown();
+
+    const matches = countries.filter(c => c.toLowerCase().includes(val));
+    matches.forEach(c => {
+      const li = document.createElement("li");
+      li.textContent = c;
+      li.addEventListener("click", () => {
+        input.value = c;
+        list.style.display = "none";
+        clearError("countrySearch");
+      });
+      list.appendChild(li);
+    });
+
+    list.style.display = matches.length ? "block" : "none";
+  });
+
+  // Position dropdown intelligently based on available space
+  function positionDropdown() {
+    const rect = input.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    
+    if (spaceBelow < 200 && spaceAbove > spaceBelow) {
+      list.style.bottom = "100%";
+      list.style.top = "auto";
+      list.style.marginBottom = "2px";
+      list.style.marginTop = "0";
+    } else {
+      list.style.top = "100%";
+      list.style.bottom = "auto";
+      list.style.marginTop = "2px";
+      list.style.marginBottom = "0";
+    }
+  }
+
+  input.addEventListener("focus", positionDropdown);
+
+  // Close dropdown on outside click
+  document.addEventListener("click", e => {
+    if (!input.contains(e.target) && !list.contains(e.target)) {
+      list.style.display="none";
+    }
+  });
+
+  // Keyboard navigation for accessibility
+  input.addEventListener("keydown", (e) => {
+    if (list.style.display === "none") return;
+    
+    const items = list.querySelectorAll("li");
+    const currentIndex = Array.from(items).findIndex(li => li.classList.contains("keyboard-selected"));
+    
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      const nextIndex = currentIndex < items.length - 1 ? currentIndex + 1 : 0;
+      items.forEach((li, i) => li.classList.toggle("keyboard-selected", i === nextIndex));
+      if (items[nextIndex]) items[nextIndex].scrollIntoView({ block: "nearest" });
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      const prevIndex = currentIndex > 0 ? currentIndex - 1 : items.length - 1;
+      items.forEach((li, i) => li.classList.toggle("keyboard-selected", i === prevIndex));
+      if (items[prevIndex]) items[prevIndex].scrollIntoView({ block: "nearest" });
+    } else if (e.key === "Enter" && currentIndex >= 0) {
+      e.preventDefault();
+      input.value = items[currentIndex].textContent;
+      list.style.display = "none";
+      clearError("countrySearch");
+    } else if (e.key === "Escape") {
+      list.style.display = "none";
+    }
+  });
+
+  // Clear errors on input
+  document.getElementById("prefix").addEventListener("change", () => clearError("prefix"));
+  document.getElementById("firstName").addEventListener("input", () => clearError("firstName"));
+  document.getElementById("lastName").addEventListener("input", () => clearError("lastName"));
+  document.getElementById("relation").addEventListener("change", () => {
+    clearError("relation");
+    handleRelationChange();
+  });
+  document.getElementById("relationOther").addEventListener("input", () => clearError("relationOther"));
+  
+  const form = document.getElementById("enroll-form");
+  form.onsubmit = (e) => {
+    e.preventDefault();
+    
+    // Clear all previous errors
+    ["prefix", "firstName", "lastName", "waNumber", "countrySearch", "relation", "relationOther"].forEach(clearError);
+    
+    let isValid = true;
+    let firstErrorField = null;
+
+    // Validate Prefix
+    const prefix = document.getElementById("prefix");
+    if (!prefix.value) {
+      showError("prefix", "Please select a prefix");
+      isValid = false;
+      if (!firstErrorField) firstErrorField = prefix;
+    }
+
+    // Validate First Name
+    const firstName = document.getElementById("firstName");
+    if (!firstName.value.trim()) {
+      showError("firstName", "Please enter your first name");
+      isValid = false;
+      if (!firstErrorField) firstErrorField = firstName;
+    }
+
+    // Validate Last Name
+    const lastName = document.getElementById("lastName");
+    if (!lastName.value.trim()) {
+      showError("lastName", "Please enter your last name");
+      isValid = false;
+      if (!firstErrorField) firstErrorField = lastName;
+    }
+
+    // Validate WhatsApp
+    if (!validateWA()) {
+      isValid = false;
+      if (!firstErrorField) firstErrorField = waNumber;
+    }
+
+    // Validate Country
+    const countrySearch = document.getElementById("countrySearch");
+    if (!countrySearch.value.trim()) {
+      showError("countrySearch", "Please select your country of residence");
+      isValid = false;
+      if (!firstErrorField) firstErrorField = countrySearch;
+    }
+
+    // Validate Relation
+    const relation = document.getElementById("relation");
+    if (!relation.value) {
+      showError("relation", "Please select your relation to the child");
+      isValid = false;
+      if (!firstErrorField) firstErrorField = relation;
+    }
+
+    // Validate Relation Other
+    const relationOther = document.getElementById("relationOther");
+    if (relation.value === "Others" && !relationOther.value.trim()) {
+      showError("relationOther", "Please specify your relation");
+      isValid = false;
+      if (!firstErrorField) firstErrorField = relationOther;
+    }
+
+    // Focus on first error field
+    if (!isValid) {
+      if (firstErrorField) {
+        firstErrorField.focus();
+        firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      return;
+    }
+    
+    const data = {};
+    new FormData(form).forEach((v,k)=>data[k]=v);
+
+    // If "Others" is selected, override with typed value
+    if (data["Relation to Child"] === "Others") {
+      data["Relation to Child"] = data["Relation to Child (Other)"] || "Others";
+      delete data["Relation to Child (Other)"];
+    }
+    
+    // Disable submit button to prevent double submission
+    const submitBtn = form.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Submitting...";
+    
+    fetch(API_URL, {
+      method:"POST",
+      body:JSON.stringify(data),
+    })
+    .then(r=>r.json())
+    .then(res=>{
+      if(res.success){
+        container.style.display="none";
+        document.getElementById("status").innerHTML = `
+          <span style="color:green;">✓ Form submitted successfully!</span><br>
+          <small style="color:var(--muted);">You can now enroll in courses. Please visit the main page to select a course.</small>
+        `;
+        document.getElementById("logout").style.display = "block";
+      } else {
+        alert("Error: "+res.error);
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Submit Enrollment";
+      }
+    })
+    .catch(err=>{
+      console.error(err); 
+      alert("Submission failed. Please try again.");
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Submit Enrollment";
+    });
+  }
+}
+
+/* ================= RELATION CHANGE HANDLER ================= */
+function handleRelationChange() {
+  const select = document.getElementById("relation");
+  const otherGroup = document.getElementById("relationOtherGroup");
+  const otherInput = document.getElementById("relationOther");
+
+  if (!select || !otherGroup || !otherInput) return;
+
+  if (select.value === "Others") {
+    otherGroup.style.display = "block";
+  } else {
+    otherGroup.style.display = "none";
+    otherInput.value = "";
+    clearError("relationOther");
+  }
+}
+
+function clearError(fieldId) {
+  const field = document.getElementById(fieldId);
+  const errorEl = document.getElementById(fieldId + "-error");
+  if (field && errorEl) {
+    field.classList.remove("error");
+    errorEl.style.display = "none";
+  }
+}
+
+/* ================= GOOGLE SIGN-IN ================= */
+function onGoogle(res){
+  const payload = JSON.parse(atob(res.credential.split(".")[1]));
+  const email = payload.email;
+  const firstName = payload.given_name || "";
+  const lastName = payload.family_name || "";
+  
+  saveSession(email, firstName, lastName);
+  document.getElementById("login").style.display="none";
+  loadEnroll(email, firstName, lastName);
+}
+
+function initializeGoogleSignIn() {
+  const sessionData = getSession();
+  
+  // Check if google object is available
+  if (typeof google !== 'undefined' && google.accounts) {
+    google.accounts.id.initialize({ client_id: CLIENT_ID, callback: onGoogle });
+
+    if(sessionData){ 
+      document.getElementById("login").style.display="none"; 
+      loadEnroll(sessionData.email, sessionData.firstName, sessionData.lastName); 
+    }
+    else {
+      document.getElementById("status").textContent="Sign in to enroll";
+      google.accounts.id.renderButton(document.getElementById("login"), { theme:"outline", size:"large" });
+    }
+  } else {
+    // Retry with exponential backoff, max 20 times
+    if (googleLoadRetries < MAX_GOOGLE_RETRIES) {
+      googleLoadRetries++;
+      document.getElementById("status").textContent="Loading Google Sign-In...";
+      setTimeout(initializeGoogleSignIn, 100);
+    } else {
+      // Failed to load after max retries
+      document.getElementById("status").textContent="Failed to load Google Sign-In. Please refresh the page.";
+      document.getElementById("login").innerHTML = `
+        <p style="color:var(--muted);font-size:14px;">
+          Unable to load authentication. Please check your internet connection and 
+          <a href="#" onclick="location.reload();return false;" style="color:var(--accent);">refresh the page</a>.
+        </p>
+      `;
+    }
+  }
+}
+
+window.onload = initializeGoogleSignIn;
+</script>
+
+</body>
+</html>
