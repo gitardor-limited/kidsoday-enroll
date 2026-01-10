@@ -6,6 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://checkout.flutterwave.com/v3.js"></script>
 
 <style>
 :root {
@@ -17,28 +18,139 @@
   --error:#d93025;
 }
 
-body { margin:0; font-family:Arial, sans-serif; background:var(--bg); }
-.container { max-width:900px; margin:30px auto; padding:20px; background:var(--card); border-radius:14px; border:1px solid var(--border); box-shadow:0 6px 20px rgba(0,0,0,.05); position:relative; }
-h1 { color:var(--accent); }
-#status { font-size:14px; color:var(--muted); margin-bottom:20px; }
-.levels { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px; }
-.level { border:1px solid var(--border); border-radius:12px; padding:16px; text-align:center; background:#fff; }
-.level.enrolled { background:#f1f3f4; opacity:.65; }
-.pay-link, .disabled-btn, button { display:inline-block; margin-top:12px; padding:10px 16px; border-radius:8px; font-weight:bold; text-decoration:none; }
-.pay-link { background:var(--accent); color:#fff; }
-.pay-link:hover { opacity:.9; }
-.disabled-btn { background:#aaa; color:#fff; cursor:not-allowed; }
-form input, form select { display:block; width:100%; margin:6px 0 12px 0; padding:8px; border-radius:6px; border:1px solid #ccc; box-sizing:border-box; }
-form input.error, form select.error { border-color:var(--error); }
-form button { background:var(--accent); color:#fff; border:none; cursor:pointer; padding:12px; font-size:16px; }
-form button:hover { opacity:0.9; }
-form button:disabled { opacity:0.6; cursor:not-allowed; }
-form label { display:block; margin-top:8px; margin-bottom:4px; font-weight:500; }
-.form-group { position:relative; margin-bottom:12px; }
-#login { margin-top:20px; }
-#logout { margin-top:30px; font-size:13px; }
-#logout a { color:#555; text-decoration:none; }
-#logout a:hover { text-decoration:underline; }
+body { 
+  margin:0; 
+  font-family:Arial, sans-serif; 
+  background:var(--bg); 
+}
+
+.container { 
+  max-width:900px; 
+  margin:30px auto; 
+  padding:20px; 
+  background:var(--card); 
+  border-radius:14px; 
+  border:1px solid var(--border); 
+  box-shadow:0 6px 20px rgba(0,0,0,.05); 
+  position:relative; 
+}
+
+h1 { 
+  color:var(--accent); 
+  margin-bottom:10px;
+}
+
+h3 {
+  color:#333;
+  font-size:20px;
+  margin-bottom:20px;
+}
+
+#status { 
+  font-size:14px; 
+  color:var(--muted); 
+  margin-bottom:20px; 
+}
+
+.course-info {
+  background:#f8f9fa;
+  border-left:4px solid var(--accent);
+  padding:15px;
+  margin-bottom:25px;
+  border-radius:6px;
+}
+
+.course-info h3 {
+  margin-top:0;
+  margin-bottom:8px;
+  color:var(--accent);
+}
+
+.course-info p {
+  margin:5px 0;
+  color:var(--muted);
+  font-size:14px;
+}
+
+.course-info .price {
+  font-size:24px;
+  font-weight:bold;
+  color:#333;
+  margin-top:10px;
+}
+
+form input, form select { 
+  display:block; 
+  width:100%; 
+  margin:6px 0 12px 0; 
+  padding:8px; 
+  border-radius:6px; 
+  border:1px solid #ccc; 
+  box-sizing:border-box; 
+}
+
+form input.error, form select.error { 
+  border-color:var(--error); 
+}
+
+form button { 
+  background:var(--accent); 
+  color:#fff; 
+  border:none; 
+  cursor:pointer; 
+  padding:12px; 
+  font-size:16px;
+  width:100%;
+  border-radius:8px;
+  font-weight:bold;
+}
+
+form button:hover { 
+  opacity:0.9; 
+}
+
+form button:disabled { 
+  opacity:0.6; 
+  cursor:not-allowed; 
+}
+
+form label { 
+  display:block; 
+  margin-top:8px; 
+  margin-bottom:4px; 
+  font-weight:500; 
+}
+
+.form-group { 
+  position:relative; 
+  margin-bottom:12px; 
+}
+
+.error-message {
+  color:var(--error);
+  font-size:13px;
+  margin-top:-8px;
+  margin-bottom:12px;
+  display:block;
+}
+
+#login { 
+  margin-top:20px; 
+}
+
+#logout { 
+  margin-top:30px; 
+  font-size:13px; 
+}
+
+#logout a { 
+  color:#555; 
+  text-decoration:none; 
+}
+
+#logout a:hover { 
+  text-decoration:underline; 
+}
 
 /* Country autocomplete dropdown */
 #countryList { 
@@ -69,18 +181,17 @@ form label { display:block; margin-top:8px; margin-bottom:4px; font-weight:500; 
   background-color:#f0f0f0;
 }
 
-.error-message {
-  color:var(--error);
-  font-size:13px;
-  margin-top:-8px;
-  margin-bottom:12px;
-  display:block;
-}
-
 @media (max-width: 600px) {
-  .container { margin:15px; padding:15px; }
-  h1 { font-size:24px; }
-  #countryList { max-height:150px; }
+  .container { 
+    margin:15px; 
+    padding:15px; 
+  }
+  h1 { 
+    font-size:24px; 
+  }
+  #countryList { 
+    max-height:150px; 
+  }
 }
 </style>
 </head>
@@ -92,7 +203,13 @@ form label { display:block; margin-top:8px; margin-bottom:4px; font-weight:500; 
 
   <div id="login"></div>
 
+  <!-- NEW: Course-specific enrollment form -->
+  <div id="course-enrollment-container" style="display:none;"></div>
+
+  <!-- EXISTING: General enrollment form (shown if NOT in Database) -->
   <div id="form-container" style="display:none;"></div>
+
+  <!-- EXISTING: Level selection (shown if no course code in URL) -->
   <div id="levels" style="display:none;"></div>
 
   <div id="logout" style="display:none;">
@@ -108,6 +225,10 @@ const ALL_LEVELS = ["LEVEL-01","LEVEL-02","LEVEL-03","LEVEL-04","LEVEL-05","LEVE
 
 let googleLoadRetries = 0;
 const MAX_GOOGLE_RETRIES = 20;
+
+// Get class code from URL parameter
+const urlParams = new URLSearchParams(window.location.search);
+const classCodeFromURL = urlParams.get('code');
 
 function saveSession(email, firstName, lastName){ 
   localStorage.setItem("kidsoday_email", email); 
@@ -133,32 +254,135 @@ function signOut(){ localStorage.clear(); location.reload(); }
 
 /* ================= LOAD ENROLLMENT / FORM ================= */
 function loadEnroll(email, firstName, lastName){
-  const url = `${API_URL}?email=${encodeURIComponent(email)}&firstName=${encodeURIComponent(firstName || "")}&lastName=${encodeURIComponent(lastName || "")}`;
+  const url = `${API_URL}?email=${encodeURIComponent(email)}&firstName=${encodeURIComponent(firstName || "")}&lastName=${encodeURIComponent(lastName || "")}&classCode=${encodeURIComponent(classCodeFromURL || "")}`;
   
   fetch(url)
     .then(r => r.json())
     .then(data => {
       if(data.error) throw data.error;
 
-      // If user not in Database → show form
-      if(!data.inDatabase){
+      // If class code is provided in URL, show course-specific enrollment
+      if (classCodeFromURL && data.inDatabase) {
+        renderCourseEnrollment(email, data);
+      }
+      // If user not in Database → show general enrollment form
+      else if(!data.inDatabase){
         renderForm(email, firstName, lastName);
         document.getElementById("status").textContent = "Please fill the enrollment form first";
-      } else {
+      } 
+      // Show level selection
+      else {
         const enrolled = new Set((data.records||[]).map(r=>r["Class Code"]));
         renderLevels(enrolled);
         document.getElementById("status").textContent = "Select a level to continue";
       }
     })
-    .catch(err => { console.error(err); document.getElementById("status").textContent = "Failed to load enrollment info"; });
+    .catch(err => { 
+      console.error(err); 
+      document.getElementById("status").textContent = "Failed to load enrollment info"; 
+    });
 }
 
-/* ================= FORM RENDER ================= */
+/* ================= NEW: COURSE-SPECIFIC ENROLLMENT ================= */
+function renderCourseEnrollment(email, data) {
+  const container = document.getElementById("course-enrollment-container");
+  container.style.display = "block";
+  document.getElementById("logout").style.display = "block";
+
+  const courseData = data.courseData || {};
+  const userData = data.userData || {};
+  const isAlreadyEnrolled = data.alreadyEnrolled || false;
+
+  const courseTitle = courseData.courseTitle || "Course Not Found";
+  const coursePrice = courseData.price || 0;
+  const classCode = classCodeFromURL || "";
+
+  container.innerHTML = `
+    <div class="course-info">
+      <h3>${courseTitle}</h3>
+      <div class="price">₦${coursePrice}</div>
+    </div>
+
+    <form id="courseEnrollForm" novalidate>
+      <div class="form-group">
+        <label for="studentName">Full Name</label>
+        <input type="text" id="studentName" name="studentName" value="${userData.fullName || ''}" readonly style="background:#f1f3f4;cursor:not-allowed;">
+      </div>
+
+      <div class="form-group">
+        <label for="studentEmail">Email Address</label>
+        <input type="email" id="studentEmail" name="studentEmail" value="${email}" readonly style="background:#f1f3f4;cursor:not-allowed;">
+      </div>
+
+      <div class="form-group">
+        <label for="studentPhone">WhatsApp Phone Number</label>
+        <input type="tel" id="studentPhone" name="studentPhone" value="${userData.whatsappNumber || ''}" readonly style="background:#f1f3f4;cursor:not-allowed;">
+      </div>
+
+      <div class="form-group">
+        <label for="studentCourseTitle">Course Title</label>
+        <input type="text" id="studentCourseTitle" value="${courseTitle}" readonly style="background:#f1f3f4;cursor:not-allowed;">
+      </div>
+
+      <div class="form-group">
+        <label for="studentClassCode">Class Code</label>
+        <input type="text" id="studentClassCode" value="${classCode}" readonly style="background:#f1f3f4;cursor:not-allowed;">
+      </div>
+
+      <button type="submit" id="payButton" ${isAlreadyEnrolled ? 'disabled' : ''}>
+        ${isAlreadyEnrolled ? 'Already Enrolled' : 'Proceed to Payment'}
+      </button>
+    </form>
+  `;
+
+  if (!isAlreadyEnrolled) {
+    const form = document.getElementById('courseEnrollForm');
+    const payButton = document.getElementById('payButton');
+
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      // Disable button to prevent double submission
+      payButton.disabled = true;
+      payButton.textContent = "Processing...";
+      
+      FlutterwaveCheckout({
+        public_key: "FLWPUBK-94d902aff72af3143763e961a5d612f0-X",
+        tx_ref: "TX_REF_" + Date.now(),
+        amount: coursePrice,
+        currency: "NGN",
+        payment_options: "card, mobilemoney, ussd",
+        customer: {
+          name: userData.fullName || "",
+          email: email,
+          phone_number: userData.whatsappNumber || ""
+        },
+        meta: {
+          course: courseTitle,
+          class_code: classCode
+        },
+        callback: function (data) {
+          // Redirect to success page after payment
+          window.location.href = "https://www.kidsoday.com/enroll/payment-success";
+        },
+        onclose: function() {
+          console.log("Payment modal closed");
+          payButton.disabled = false;
+          payButton.textContent = "Proceed to Payment";
+        },
+      });
+    });
+  } else {
+    document.getElementById("status").textContent = "You are already enrolled in this course";
+  }
+}
+
+/* ================= EXISTING: GENERAL ENROLLMENT FORM ================= */
 function renderForm(email, firstName, lastName){
   const container = document.getElementById("form-container");
   container.style.display="block";
   
-    // Show logout button
+  // Show logout button
   document.getElementById("logout").style.display="block";
   
   container.innerHTML = `
@@ -600,7 +824,7 @@ function renderLevels(enrolled){
       <h3>${code}</h3>
       ${isEnrolled
         ? `<span class="disabled-btn">Already Enrolled</span>`
-        : `<a class="pay-link" href="https://www.kidsoday.com/payment-page?course=${code}" target="_blank">Proceed to Payment</a>`}
+        : `<a class="pay-link" href="?code=${code}">Enroll Now</a>`}
     `;
     grid.appendChild(div);
   });
