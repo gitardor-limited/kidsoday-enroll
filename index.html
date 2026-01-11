@@ -198,7 +198,7 @@ form label {
 
 <body>
 <div class="container">
-  <h1>Course Enrollment</h1>
+  <h1>Confirm Enrollment Details</h1>
   <div id="status">Checking session…</div>
 
   <div id="login"></div>
@@ -298,7 +298,7 @@ function loadEnroll(email, firstName, lastName){
         throw new Error(data.error);
       }
 
-      // PRIORITY 1: If class code is in URL, ALWAYS show course enrollment form
+      // PRIORITY 1: If class code is in URL, ALWAYS show Confirm Enrollment Details form
       if (classCodeFromURL) {
         console.log("✓ Class code detected in URL:", classCodeFromURL);
         // If user not in Database, show enrollment form first
@@ -309,7 +309,7 @@ function loadEnroll(email, firstName, lastName){
             <span style="color:var(--muted);">Please complete your profile first, then you'll be enrolled in the course.</span>
           `;
         } else {
-          console.log("✓ User in database - showing course enrollment");
+          console.log("✓ User in database - showing Confirm Enrollment Details");
           // Check if course data was found
           if (!data.courseData) {
             console.error("✗ Course data is NULL!");
@@ -322,7 +322,7 @@ function loadEnroll(email, firstName, lastName){
             document.getElementById("logout").style.display = "block";
             return;
           }
-          // User is in database and course found, show course enrollment
+          // User is in database and course found, show Confirm Enrollment Details
           renderCourseEnrollment(email, data);
         }
         return;
@@ -361,7 +361,7 @@ function renderCourseEnrollment(email, data) {
   document.getElementById("form-container").style.display = "none";
 
   // DEBUG: Log all data received
-  console.log("=== DEBUG: Course Enrollment Data ===");
+  console.log("=== DEBUG: Confirm Enrollment Details Data ===");
   console.log("Full data:", data);
   console.log("Course Data:", data.courseData);
   console.log("User Data:", data.userData);
@@ -888,13 +888,13 @@ function renderForm(email, firstName, lastName){
     .then(r=>r.json())
     .then(res=>{
       if(res.success){
-        // If class code is in URL, reload to show course enrollment
+        // If class code is in URL, reload to show Confirm Enrollment Details
         if (classCodeFromURL) {
           document.getElementById("status").innerHTML = `
             <span style="color:green;">✓ Form submitted successfully!</span><br>
-            <small style="color:var(--muted);">Redirecting to course enrollment...</small>
+            <small style="color:var(--muted);">Redirecting to Confirm Enrollment Details...</small>
           `;
-          // Reload the page after 1 second to show course enrollment
+          // Reload the page after 1 second to show Confirm Enrollment Details
           setTimeout(() => {
             window.location.reload();
           }, 1000);
