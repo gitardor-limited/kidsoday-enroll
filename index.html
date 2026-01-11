@@ -374,6 +374,7 @@ function renderCourseEnrollment(email, data) {
 
   const courseTitle = courseData.courseTitle || "Course Not Found";
   const coursePrice = courseData.price || 0;
+  const courseCurrency = courseData.currency || "$";
   const classCode = classCodeFromURL || "";
   
   // DEBUG: Show debug info to user if course not found
