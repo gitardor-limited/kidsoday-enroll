@@ -271,7 +271,7 @@ function signOut(){ localStorage.clear(); location.reload(); }
 function loadEnroll(email, firstName, lastName){
   const url = `${API_URL}?email=${encodeURIComponent(email)}&firstName=${encodeURIComponent(firstName || "")}&lastName=${encodeURIComponent(lastName || "")}&classCode=${encodeURIComponent(classCodeFromURL || "")}`;
   
-  document.getElementById("status").textContent = "Loading your information...";
+  document.getElementById("status").textContent = "When the toys are gone, knowledge remains...";
   
   fetch(url)
     .then(r => {
