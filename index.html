@@ -390,7 +390,23 @@ function renderCourseEnrollment(email, data) {
   container.innerHTML = `
     <div class="course-info">
       <h3>${courseTitle}</h3>
-      <div class="price">${courseCurrency}${coursePrice}</div>
+      <div class="price" id="displayPrice">${courseCurrency}${coursePrice}</div>
+      <div style="margin-top:10px;">
+        <label for="currencySelector" style="font-size:14px;color:var(--muted);">Prefer to pay in a different currency?</label>
+        <select id="currencySelector" style="margin-top:5px;padding:8px;border-radius:6px;border:1px solid #ccc;width:100%;max-width:250px;">
+          <option value="${courseCurrency === '₦' ? 'NGN' : courseCurrency === '£' ? 'GBP' : courseCurrency === '€' ? 'EUR' : 'USD'}" selected>
+            ${courseCurrency === '₦' ? '₦ Nigerian Naira (NGN)' : 
+              courseCurrency === '£' ? '£ British Pound (GBP)' : 
+              courseCurrency === '€' ? '€ Euro (EUR)' : 
+              '$ US Dollar (USD)'}
+          </option>
+          <option value="NGN">₦ Nigerian Naira (NGN)</option>
+          <option value="USD">$ US Dollar (USD)</option>
+          <option value="GBP">£ British Pound (GBP)</option>
+          <option value="EUR">€ Euro (EUR)</option>
+        </select>
+        <small id="conversionNote" style="display:block;margin-top:5px;color:var(--muted);font-size:12px;">Loading exchange rates...</small>
+      </div>
     </div>
 
     <form id="courseEnrollForm" novalidate>
