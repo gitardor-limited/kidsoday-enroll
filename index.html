@@ -430,38 +430,44 @@ function renderCourseEnrollment(email, data) {
     const payButton = document.getElementById('payButton');
 
     form.addEventListener('submit', function(e) {
-      e.preventDefault();
-      
-      // Disable button to prevent double submission
-      payButton.disabled = true;
-      payButton.textContent = "Processing...";
-      
-      FlutterwaveCheckout({
-        public_key: "FLWPUBK-94d902aff72af3143763e961a5d612f0-X",
-        tx_ref: "TX_REF_" + Date.now(),
-        amount: coursePrice,
-        currency: flutterwaveCurrency,
-        payment_options: "card, mobilemoney, ussd",
-        customer: {
-          name: userData.fullName || "",
-          email: email,
-          phone_number: userData.whatsappNumber || ""
-        },
-        meta: {
-          course: courseTitle,
-          class_code: classCode
-        },
-        callback: function (data) {
-          // Redirect to success page after payment
-          window.location.href = "https://www.kidsoday.com/enroll/payment-success";
-        },
-        onclose: function() {
-          console.log("Payment modal closed");
-          payButton.disabled = false;
-          payButton.textContent = "Proceed to Payment";
-        },
-      });
-    });
+  e.preventDefault();
+  
+  // Disable button to prevent double submission
+  payButton.disabled = true;
+  payButton.textContent = "Processing...";
+  
+  // Convert currency symbol to Flutterwave currency code
+  const currencyCode = courseCurrency === "₦" ? "NGN" : 
+                       courseCurrency === "$" ? "USD" : 
+                       courseCurrency === "£" ? "GBP" : 
+                       courseCurrency === "€" ? "EUR" : 
+                       "NGN"; // Default to NGN if unknown
+
+  FlutterwaveCheckout({
+    public_key: "FLWPUBK-94d902aff72af3143763e961a5d612f0-X",
+    tx_ref: "TX_REF_" + Date.now(),
+    amount: coursePrice,
+    currency: currencyCode,  // ← NOW DYNAMIC!
+    payment_options: "card, mobilemoney, ussd",
+    customer: {
+      name: userData.fullName || "",
+      email: email,
+      phone_number: userData.whatsappNumber || ""
+    },
+    meta: {
+      course: courseTitle,
+      class_code: classCode
+    },
+    callback: function (data) {
+      window.location.href = "https://www.kidsoday.com/enroll/payment-success";
+    },
+    onclose: function() {
+      console.log("Payment modal closed");
+      payButton.disabled = false;
+      payButton.textContent = "Proceed to Payment";
+    },
+  });
+});
   } else {
     document.getElementById("status").textContent = "You are already enrolled in this course";
   }
