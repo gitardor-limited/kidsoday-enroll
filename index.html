@@ -389,7 +389,7 @@ function renderCourseEnrollment(email, data) {
   container.innerHTML = `
     <div class="course-info">
       <h3>${courseTitle}</h3>
-      <div class="price">₦${coursePrice}</div>
+      <div class="price">${courseCurrency}${coursePrice}</div>
     </div>
 
     <form id="courseEnrollForm" novalidate>
