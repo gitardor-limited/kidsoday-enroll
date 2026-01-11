@@ -198,7 +198,7 @@ form label {
 
 <body>
 <div class="container">
-  <h1>Enroll in a Level</h1>
+  <h1>Course Enrollment</h1>
   <div id="status">Checking session…</div>
 
   <div id="login"></div>
@@ -222,20 +222,25 @@ const SESSION_DAYS = 30;
 let googleLoadRetries = 0;
 const MAX_GOOGLE_RETRIES = 20;
 
-// Get class code from URL parameter
+// Get class code from URL - supports BOTH query params (?code=) and hash (#code=)
+let classCodeFromURL = null;
+
+// Try query parameter first
 const urlParams = new URLSearchParams(window.location.search);
-const classCodeFromURL = urlParams.get('code');
+classCodeFromURL = urlParams.get('code');
+
+// If not found, try hash parameter (works in iframes!)
+if (!classCodeFromURL && window.location.hash) {
+  const hashParams = new URLSearchParams(window.location.hash.substring(1));
+  classCodeFromURL = hashParams.get('code');
+}
 
 // DEBUG URL PARSING
 console.log("=== URL PARSING DEBUG ===");
 console.log("Full URL:", window.location.href);
 console.log("Search string:", window.location.search);
-console.log("URLSearchParams:", urlParams.toString());
-console.log("All params:");
-for (const [key, value] of urlParams) {
-  console.log(`  ${key}: ${value}`);
-}
-console.log("Getting 'code':", urlParams.get('code'));
+console.log("Hash string:", window.location.hash);
+console.log("Query params:", urlParams.toString());
 console.log("classCodeFromURL:", classCodeFromURL);
 console.log("Type:", typeof classCodeFromURL);
 console.log("========================");
@@ -876,12 +881,25 @@ function renderForm(email, firstName, lastName){
     .then(r=>r.json())
     .then(res=>{
       if(res.success){
-        container.style.display="none";
-        document.getElementById("status").innerHTML = `
-          <span style="color:green;">✓ Form submitted successfully!</span><br>
-          <small style="color:var(--muted);">You can now enroll in courses. Please visit the main page to select a course.</small>
-        `;
-        document.getElementById("logout").style.display = "block";
+        // If class code is in URL, reload to show course enrollment
+        if (classCodeFromURL) {
+          document.getElementById("status").innerHTML = `
+            <span style="color:green;">✓ Form submitted successfully!</span><br>
+            <small style="color:var(--muted);">Redirecting to course enrollment...</small>
+          `;
+          // Reload the page after 1 second to show course enrollment
+          setTimeout(() => {
+            window.location.reload();
+          }, 1000);
+        } else {
+          // No class code - show generic success message
+          container.style.display="none";
+          document.getElementById("status").innerHTML = `
+            <span style="color:green;">✓ Form submitted successfully!</span><br>
+            <small style="color:var(--muted);">You can now enroll in courses. Please visit the main page to select a course.</small>
+          `;
+          document.getElementById("logout").style.display = "block";
+        }
       } else {
         alert("Error: "+res.error);
         submitBtn.disabled = false;
@@ -973,4 +991,4 @@ window.onload = initializeGoogleSignIn;
 </script>
 
 </body>
-</html>  
+</html>
