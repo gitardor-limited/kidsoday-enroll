@@ -566,6 +566,11 @@ async function renderCourseEnrollment(email, data) {
           original_price: basePrice,
           original_currency: baseCurrencyCode
         },
+        customizations: {
+          title: "Kids O'Day",
+          description: "Learning made fun.",
+          logo: "https://logo.kidsoday.com/Kids%20O'Day.png"
+        },
         callback: function (data) {
           window.location.href = "https://www.kidsoday.com/enroll/payment-success";
         },
